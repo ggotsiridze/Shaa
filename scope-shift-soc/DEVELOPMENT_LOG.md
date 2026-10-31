@@ -55,6 +55,21 @@ more than one defensible answer. Repairs (details and tests in BUG_LOG.md, REVIE
 8. **Environment.** Python 3.12.3, exact pins, `pip check` clean (REVIEW-020).
 9. **Mutations:** 7 new ones (M13–M19) covering the new logic. 19/19 killed.
 
+## 2026-10-31: Anthropic (Claude) provider, no benchmark changes
+
+- Added `scopeshift/providers/anthropic_provider.py`, built on the official SDK (`anthropic==2.3.0`, pinned) and the Messages API. The system prompt goes in `system` and the incident JSON in a single user message. Optional `output_config.format` uses the same schema as OpenAI. `output_config.effort` is sent only when given; `thinking` is never sent. `max_tokens` defaults to 16000. `--temperature` is rejected up front.
+- **Validity choices:**
+  - Refusal fallbacks are OFF, so another model can never answer.
+  - The base URL is pinned. This cloud session sets an internal `ANTHROPIC_BASE_URL`, which the SDK would otherwise follow.
+  - SDK retries are OFF.
+  - Refusals and `max_tokens` truncation are model output.
+- **Errors:** 429/500/529 are transient. 401/403 → AUTH, 402 → QUOTA, 400/404/413 → BAD_REQUEST.
+- **Tests:** 29 tests that run the real SDK over an in-memory transport, with no network or cost.
+- **Mutations:** M26 (base URL not pinned) and M27 (refusal treated as infrastructure).
+- **CLI:** settings validation now runs before `--dry-run`, and the plan shows the provider's own key variable.
+- **Unchanged:** tasks, prompt, gold answers, oracle, grader, weights, pairs, taxonomy, metrics.
+- **Not yet done:** a real paid call. `ANTHROPIC_API_KEY` is not set in this session, though `api.anthropic.com` is reachable.
+
 ## 2026-10-31: real-model support (OpenAI provider), no benchmark changes
 
 - Added `scopeshift/providers/openai_provider.py`, built on the official SDK (`openai==3.42.0`, pinned) and the Responses API. It sends `prompt.system` as `instructions` and `prompt.user` as `input`. An optional strict JSON schema restates only the field set, types and enums. `store=false`. SDK internal retries are disabled, so the harness counts every attempt.

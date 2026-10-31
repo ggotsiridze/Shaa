@@ -76,6 +76,14 @@ MUTATIONS = [
      "client = OpenAI(api_key=self._api_key, max_retries=0,", "client = OpenAI(api_key=self._api_key, max_retries=2,"),
     ("M25 API-key redaction disabled", "scopeshift/errors.py",
      "    for secret in extra_secrets:\n", "    return text\n    for secret in extra_secrets:\n"),
+    ("M26 Anthropic base URL not pinned (ambient ANTHROPIC_BASE_URL honoured)", "scopeshift/providers/anthropic_provider.py",
+     "client = Anthropic(api_key=self._api_key, base_url=API_BASE_URL, max_retries=0,",
+     "client = Anthropic(api_key=self._api_key, max_retries=0,"),
+    ("M27 Anthropic refusal mapped to infrastructure failure", "scopeshift/providers/anthropic_provider.py",
+     "        blocks = list(getattr(msg, \"content\", None) or [])\n",
+     ("        if getattr(msg, \"stop_reason\", None) == \"refusal\":\n"
+      "            raise InfrastructureError(InfraKind.SERVER_ERROR, \"refusal\")\n"
+      "        blocks = list(getattr(msg, \"content\", None) or [])\n")),
 ]
 
 

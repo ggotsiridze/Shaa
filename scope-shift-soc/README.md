@@ -30,7 +30,7 @@ See `RESEARCH_DECISION.md` for scope, related work, non-claims, and pivot/abando
 | `scopeshift/pair_validation.py` | flattened model-visible diff; must equal declared differences |
 | `scopeshift/alignment.py` | prompt/grader alignment check |
 | `scopeshift/harness.py`, `metrics.py` | isolated trials, bounded retries, pilot metrics, pass^k |
-| `scopeshift/providers/` | provider interface, mock providers, OpenAI provider (Responses API) |
+| `scopeshift/providers/` | provider interface, mock providers, OpenAI (Responses API) and Anthropic (Messages API) providers |
 | `scripts/` | `validate_tasks.py`, `validate_pairs.py`, `validate_alignment.py`, `mutation_check.py` |
 
 ## What the oracle proves
@@ -55,7 +55,7 @@ pytest -q
 python scripts/validate_tasks.py
 python scripts/validate_pairs.py        # also regenerates PAIR_DIFF_REPORT.md
 python scripts/validate_alignment.py
-python scripts/mutation_check.py        # injects 25 bugs; all must be caught
+python scripts/mutation_check.py        # injects 27 bugs; all must be caught
 python run_eval.py --provider mock --model mock-perfect --tasks tasks/development --trials 3
 ```
 
@@ -143,6 +143,55 @@ several trials and reports pass^k.
 - **Model failure:** any completed response. That includes wrong answers, malformed or
   truncated JSON, empty output and refusals. These are graded as returned and are **never
   retried**.
+
+## Running a Claude model (Anthropic)
+
+The same workflow applies with `--provider anthropic` and `ANTHROPIC_API_KEY`:
+
+```bash
+export ANTHROPIC_API_KEY="<your key>"
+```
+
+```bash
+python run_eval.py --provider anthropic --model claude-opus-5-5 --trials 5 --dry-run
+```
+
+```bash
+python run_eval.py --provider anthropic --model claude-opus-5-5 --task-ids SS-DEV-001A --trials 1
+```
+
+```bash
+python run_eval.py --provider anthropic --model claude-opus-5-5 --trials 5
+```
+
+Any model ID works with `--model`, for example `claude-opus-5-5`, `claude-sonnet-5-5` or
+`claude-haiku-5-5`.
+
+**What Claude receives:** the system prompt as `system` and the incident JSON as the single
+user message. With the default `--structured-output json_schema`, it also receives
+`output_config.format` with the same answer-contract schema OpenAI gets.
+
+**Settings:**
+- `thinking` is never sent, so each model runs its default (adaptive) mode.
+- `--reasoning-effort` sets `output_config.effort`, and is sent only if given. Note that Claude
+  Opus 5.5's default effort is `medium`.
+- `--max-output-tokens` sets `max_tokens`. The API requires it; the default is 16000, and
+  thinking tokens count against it.
+- `--temperature` is rejected before any call, because current Claude models and API versions
+  do not accept sampling parameters.
+
+**Benchmark-validity choices:**
+- **Server-side refusal fallbacks are deliberately off.** A fallback would let a *different*
+  model answer. A refusal (`stop_reason: refusal`, with `stop_details` recorded) counts as the
+  tested model's own output and is never retried.
+- **The base URL is pinned** to `https://api.anthropic.com`, so an ambient
+  `ANTHROPIC_BASE_URL` cannot redirect requests or the key.
+- **The SDK's own retries are disabled.** The harness retries timeouts, network errors, 429,
+  500 and 529 (overloaded) responses. 401, 403 and 402 (billing) responses, and 400, 404 and
+  413 errors, stop immediately.
+
+**Raw output:** all text blocks concatenated in order, with thinking blocks excluded. Every
+trial records `stop_reason`, the content block types and the `request-id`.
 
 **Cost:** token usage reported by the API is recorded per trial and summed per run. Dollar cost
 is *not* computed, because no pricing is hard-coded. Multiply `usage_reported` by the model's

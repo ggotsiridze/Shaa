@@ -65,6 +65,13 @@ def api_key_status() -> str:
     return "set" if os.environ.get(API_KEY_ENV, "").strip() else "NOT SET"
 
 
+def validate_settings(settings: dict) -> None:
+    """Reject settings before any call (and in --dry-run)."""
+    mode = settings.get("structured_output", "json_schema")
+    if mode not in STRUCTURED_OUTPUT_MODES:
+        raise ConfigurationError(f"structured_output must be one of {STRUCTURED_OUTPUT_MODES}, got {mode!r}")
+
+
 def classify_openai_error(exc: Exception, api_key: str | None = None) -> InfrastructureError:
     """Map an SDK exception to the harness's infrastructure taxonomy (never a model failure)."""
     import openai

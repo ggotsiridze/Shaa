@@ -27,7 +27,7 @@ from scopeshift.loader import load_tasks
 from scopeshift.metrics import compute_metrics
 from scopeshift.oracle import check_against_reference
 from scopeshift.prompt import PROMPT_PATH, build_prompt
-from scopeshift.providers import PROVIDER_NAMES, build_provider
+from scopeshift.providers import PROVIDER_NAMES, build_provider, provider_module
 from scopeshift.providers.mock import MOCK_MODELS
 
 ROOT = Path(__file__).resolve().parent
@@ -55,10 +55,14 @@ def _sha256(path: Path) -> str:
 def generation_settings(args: argparse.Namespace) -> dict:
     if args.provider == "mock":
         return {"temperature": None}
+    max_out = args.max_output_tokens
+    if max_out is None and args.provider == "anthropic":  # required by the API: show the value actually sent
+        from scopeshift.providers.anthropic_provider import DEFAULT_MAX_TOKENS
+        max_out = DEFAULT_MAX_TOKENS
     return {
         "structured_output": args.structured_output,
         "temperature": args.temperature,
-        "max_output_tokens": args.max_output_tokens,
+        "max_output_tokens": max_out,
         "reasoning_effort": args.reasoning_effort,
         "timeout_s": args.timeout,
     }
@@ -80,9 +84,9 @@ def plan_lines(args: argparse.Namespace, n_tasks: int, settings: dict) -> list[s
         f"Generation settings: {json.dumps(settings)}",
         f"Retries: max_attempts={args.max_attempts}, backoff={args.backoff}s, jitter={args.jitter}",
     ]
-    if args.provider == "openai":
-        from scopeshift.providers.openai_provider import API_KEY_ENV, api_key_status
-        lines.append(f"{API_KEY_ENV}: {api_key_status()}")
+    mod = provider_module(args.provider)
+    if mod is not None:
+        lines.append(f"{mod.API_KEY_ENV}: {mod.api_key_status()}")
         lines.append("NOTE: real API calls may incur charges on your account.")
     return lines
 
@@ -104,9 +108,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--backoff", type=float, default=None, help="base retry backoff seconds (default: 0 mock, 2 real)")
     ap.add_argument("--jitter", type=float, default=None, help="backoff jitter fraction 0..1 (default: 0 mock, 0.25 real)")
     ap.add_argument("--structured-output", choices=["json_schema", "off"], default="json_schema")
-    ap.add_argument("--temperature", type=float, default=None, help="sent only if given (some models reject it)")
-    ap.add_argument("--max-output-tokens", type=int, default=None, help="sent only if given")
-    ap.add_argument("--reasoning-effort", default=None, help="sent only if given (reasoning models)")
+    ap.add_argument("--temperature", type=float, default=None,
+                    help="openai only; sent only if given (some models reject it)")
+    ap.add_argument("--max-output-tokens", type=int, default=None,
+                    help="openai: sent only if given; anthropic: max_tokens (default 16000)")
+    ap.add_argument("--reasoning-effort", default=None,
+                    help="openai: reasoning.effort; anthropic: output_config.effort; sent only if given")
     ap.add_argument("--timeout", type=float, default=120.0, help="per-request timeout seconds (real providers)")
     ap.add_argument("--dry-run", action="store_true", help="validate config and print the plan; zero model calls")
     ap.add_argument("--validate-api", action="store_true", help="check key/model access without generating output")
@@ -145,6 +152,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     settings = generation_settings(args)
+    mod = provider_module(args.provider)
+    if mod is not None:
+        try:
+            mod.validate_settings(settings)
+        except ConfigurationError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
     for line in plan_lines(args, len(tasks), settings):
         print(line)
     if args.dry_run:
@@ -215,7 +229,8 @@ def main(argv: list[str] | None = None) -> int:
         "cost": {"total_cost_usd": metrics["total_cost_usd"],
                  "note": "not computed for real providers (no hard-coded pricing); derive from usage_reported"},
         "environment": {"python": platform.python_version(), "platform": platform.platform(),
-                        "pydantic": _pkg("pydantic"), "openai": _pkg("openai"), "git_commit": _git_commit(),
+                        "pydantic": _pkg("pydantic"), "openai": _pkg("openai"), "anthropic": _pkg("anthropic"),
+                        "git_commit": _git_commit(),
                         "prompt_template_sha256": _sha256(PROMPT_PATH),
                         "task_files_sha256": {t.task_id: _sha256(args.tasks / f"{t.task_id}.json") for t in tasks}},
         "transcripts": str(transcript_path),
