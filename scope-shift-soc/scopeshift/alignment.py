@@ -18,7 +18,9 @@ COMPONENT_FIELDS = {
 
 
 def check_alignment(root: Path, prompt_text: str | None = None) -> tuple[list[tuple[str, str, int]], list[str]]:
-    prompt_path = root / "prompts" / "model_under_test_v1.md"
+    from scopeshift.prompt import PROMPT_PATH
+
+    prompt_path = PROMPT_PATH
     text = prompt_text if prompt_text is not None else prompt_path.read_text(encoding="utf-8")
     lines = text.splitlines()
     doc = (root / "TASK_GRADER_ALIGNMENT.md").read_text(encoding="utf-8")

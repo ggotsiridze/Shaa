@@ -55,6 +55,37 @@ more than one defensible answer. Repairs (details and tests in BUG_LOG.md, REVIE
 8. **Environment.** Python 3.12.3, exact pins, `pip check` clean (REVIEW-020).
 9. **Mutations:** 7 new ones (M13–M19) covering the new logic. 19/19 killed.
 
+## 2026-10-31: first real-model pilot -> harder tasks (v0.4)
+
+**Pilot results:** prompt v1, `tasks/development`, 5 trials per task. These are real API runs; results and transcripts are committed.
+
+| Model | Strict pass | pass^5 | Real reasoning errors |
+|---|---|---|---|
+| claude-opus-5-5 | 100% | 100% | 0 |
+| claude-sonnet-5-5 | 100% | 100% | 0 |
+| claude-haiku-5-5 | 85% (100% after re-grade) | 50% (100%) | 0 |
+
+**Haiku's 3 failures were only the rationale length.** It wrote about 790 characters against a 600-character limit, while every scored field was correct. The rationale is not scored, so the limit was measuring wordiness, not the capability.
+
+**Changes in v0.4:**
+1. **Rationale limit 600 → 2000.** `scripts/regrade.py` re-scored the saved raw answers with no API calls; Haiku goes to 100%. The re-grade output notes that the model was instructed with the 600 limit.
+2. **No headroom on the pilot tasks.** This meets the pivot criterion in RESEARCH_DECISION §16.
+   - **Prompt v2** removes the strategy coaching but keeps every field definition the grader needs. v1 is archived for reproducibility. `--prompt-version` selects the prompt, and runs record it.
+   - **`tasks/pilot2`:** 8 harder candidate tasks (4 controlled pairs).
+     - **Longer timelines:** 11–15 events.
+     - **Neutral SIEM checkpoints:** every 30 or 60 minutes, so the expiry boundary isn't singled out.
+     - **Noise:** change/register notes that change nothing, chat, monitoring.
+     - **Traps:**
+       - chained extensions, valid then ticket-only;
+       - a backdated revocation, "effective 23:10", recorded at 23:41, across midnight;
+       - a revocation by email;
+       - a protected-data transfer reported by EDR, which cannot establish the stop condition, vs DLP;
+       - an approval window in CET (UTC+01:00) vs UTC.
+3. **Validator refinement:** the alerted event is exempt from the competing-obligation rule, because its own coverage selects the rule (needed for 005A).
+4. **Pair validator caught an issue:** the alert `source` differed in pair 005, an undeclared cue. Fixed: the alert comes from SIEM in both variants.
+
+**Gold answers for `tasks/pilot2` are still PENDING human review.**
+
 ## 2026-10-31: Anthropic (Claude) provider, no benchmark changes
 
 - Added `scopeshift/providers/anthropic_provider.py`, built on the official SDK (`anthropic==2.3.0`, pinned) and the Messages API. The system prompt goes in `system` and the incident JSON in a single user message. Optional `output_config.format` uses the same schema as OpenAI. `output_config.effort` is sent only when given; `thinking` is never sent. `max_tokens` defaults to 16000. `--temperature` is rejected up front.

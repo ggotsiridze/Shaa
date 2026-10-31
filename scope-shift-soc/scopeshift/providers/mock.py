@@ -107,10 +107,13 @@ class MockProvider(Provider):
         self.calls = 0
 
     @classmethod
-    def from_tasks(cls, model: str, tasks: list[Task], settings: dict | None = None) -> MockProvider:
+    def from_tasks(cls, model: str, tasks: list[Task], settings: dict | None = None,
+                   prompt_path=None) -> MockProvider:
+        from scopeshift.prompt import PROMPT_PATH
+
         key: dict[str, Task] = {}
         for t in tasks:
-            k = prompt_key(build_prompt(t))
+            k = prompt_key(build_prompt(t, prompt_path or PROMPT_PATH))
             if k in key:
                 raise ValueError(f"{t.task_id} and {key[k].task_id} render identical prompts")
             key[k] = t

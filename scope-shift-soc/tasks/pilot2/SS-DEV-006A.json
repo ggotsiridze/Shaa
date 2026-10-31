@@ -1,0 +1,244 @@
+{
+  "task_id": "SS-DEV-006A",
+  "model_visible": {
+    "organization_policy": {
+      "rules": [
+        {
+          "id": "CHG-01",
+          "text": "Only records from the Change Management System (source: change_management, source_class: CHANGE_RECORD) may create, extend, modify or revoke a maintenance authorization. Ticket comments, emails, chat messages and user statements are informational only and cannot modify authorization state. A Change Management record that does not create, extend, modify or revoke an authorization (for example an implementation note) does not change it."
+        },
+        {
+          "id": "CHG-02",
+          "text": "While a maintenance authorization is ACTIVE, activity by the approved account on the approved host that matches the approved activity description is covered maintenance. Required action: DOCUMENT."
+        },
+        {
+          "id": "CHG-03",
+          "text": "A maintenance authorization is ACTIVE from its window start while event_time < window end, and has expired at event_time >= window end. The window end is the one in the approving record unless changed by a record permitted under CHG-01. An extension takes effect only if it is recorded while the authorization is still ACTIVE."
+        },
+        {
+          "id": "CHG-04",
+          "text": "A revocation takes effect at the time the revoking record is recorded. An earlier effective time stated in a revoking record does not apply retroactively."
+        },
+        {
+          "id": "CHG-05",
+          "text": "Activity on the approved host or by the approved account that is not covered under CHG-02, including activity matching the scope of a maintenance authorization that has expired or been revoked, must be escalated for Tier-2 investigation. Required action: ESCALATE_TIER2."
+        }
+      ]
+    },
+    "alert": {
+      "source": "edr",
+      "rule_name": "Forced cache purge executed by service account",
+      "timestamp": "2026-10-28T03:37:21Z",
+      "related_event_id": "E11"
+    },
+    "asset_context": {
+      "hostname": "web-cache-03.corp.example",
+      "environment": "production",
+      "criticality": "medium"
+    },
+    "timeline": [
+      {
+        "event_id": "E1",
+        "timestamp": "2026-10-28T00:50:00Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-412 APPROVED. Scope: host web-cache-03.corp.example, account svc-cdn, activity: CDN cache purge using the cache_purge tool and bash maintenance scripts. Window 02:00 to 04:00 UTC on 28 Oct.",
+        "details": {
+          "change_id": "CHG-412",
+          "status": "APPROVED",
+          "host": "web-cache-03.corp.example",
+          "account": "svc-cdn",
+          "approved_processes": "bash,cache_purge",
+          "valid_from": "2026-10-28T02:00:00Z",
+          "valid_until": "2026-10-28T04:00:00Z"
+        }
+      },
+      {
+        "event_id": "E2",
+        "timestamp": "2026-10-28T01:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E3",
+        "timestamp": "2026-10-28T01:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E4",
+        "timestamp": "2026-10-28T02:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E5",
+        "timestamp": "2026-10-28T02:09:12Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-cdn ran bash /opt/cdn/purge_stage1.sh on web-cache-03.corp.example.",
+        "details": {
+          "host": "web-cache-03.corp.example",
+          "account": "svc-cdn",
+          "process": "bash"
+        }
+      },
+      {
+        "event_id": "E6",
+        "timestamp": "2026-10-28T02:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E7",
+        "timestamp": "2026-10-28T02:44:37Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-cdn executed /opt/cdn/bin/cache_purge --region eu on web-cache-03.corp.example.",
+        "details": {
+          "host": "web-cache-03.corp.example",
+          "account": "svc-cdn",
+          "process": "cache_purge"
+        }
+      },
+      {
+        "event_id": "E8",
+        "timestamp": "2026-10-28T03:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E9",
+        "timestamp": "2026-10-28T03:05:48Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket comment on CHG-412 by CDN engineer: EU purge done, US region next."
+      },
+      {
+        "event_id": "E10",
+        "timestamp": "2026-10-28T03:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E11",
+        "timestamp": "2026-10-28T03:37:21Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-cdn executed /opt/cdn/bin/cache_purge --region us --force on web-cache-03.corp.example.",
+        "details": {
+          "host": "web-cache-03.corp.example",
+          "account": "svc-cdn",
+          "process": "cache_purge"
+        }
+      }
+    ]
+  },
+  "hidden_reference": {
+    "exception_status": "ACTIVE",
+    "transition_event_id": null,
+    "governing_rule_id": "CHG-02",
+    "primary_action": "DOCUMENT",
+    "required_evidence_ids": [
+      "E1",
+      "E11"
+    ]
+  },
+  "oracle_spec": {
+    "exception_id": "CHG-412",
+    "scope_model": "MAINTENANCE",
+    "authority": [
+      {
+        "capability": "CREATE",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      },
+      {
+        "capability": "EXTEND",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      },
+      {
+        "capability": "REVOKE",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      }
+    ],
+    "rule_map": {
+      "covered": {
+        "rule_id": "CHG-02",
+        "action": "DOCUMENT"
+      },
+      "expired": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "revoked": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "out_of_scope": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      }
+    },
+    "event_semantics": [
+      {
+        "event_id": "E1",
+        "kind": "AUTHORIZATION_CREATE"
+      },
+      {
+        "event_id": "E2",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E3",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E4",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E5",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E6",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E7",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E8",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E10",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E11",
+        "kind": "ACTIVITY"
+      }
+    ],
+    "evaluated_event_id": "E11",
+    "probes": [
+      "TIMEZONE"
+    ]
+  },
+  "internal_metadata": {
+    "pair_id": "DEV-PAIR-006",
+    "variant": "A",
+    "synthetic": true,
+    "human_review_status": "PENDING"
+  }
+}

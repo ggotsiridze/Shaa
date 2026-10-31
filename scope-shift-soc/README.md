@@ -22,7 +22,8 @@ See `RESEARCH_DECISION.md` for scope, related work, non-claims, and pivot/abando
 | Path | Purpose |
 |---|---|
 | `tasks/development/` | 4 pilot tasks + `pairs.json` (declared pair differences) |
-| `prompts/model_under_test_v1.md` | system prompt + user template (model sees only `model_visible`) |
+| `tasks/pilot2/` | 8 harder candidate tasks (4 pairs): chained extensions, backdated revocation, stop-condition evidence source, time zones |
+| `prompts/model_under_test_v2.md` | active prompt: system prompt + user template, no strategy coaching (model sees only `model_visible`); `prompts/archive/model_under_test_v1.md` is the coached pilot prompt (`--prompt-version v1`) |
 | `scopeshift/schema.py` | Pydantic models for tasks and the strict model-answer contract (`extra="forbid"`) |
 | `scopeshift/oracle.py` | deterministic INACTIVE→ACTIVE→TERMINATED state machine over a hand-authored policy encoding; validates reference answers (see "What the oracle proves") |
 | `scopeshift/grader.py` | fail-closed parser + weighted deterministic grader + prompt-requirement registry |
@@ -54,7 +55,10 @@ pip check
 pytest -q
 python scripts/validate_tasks.py
 python scripts/validate_pairs.py        # also regenerates PAIR_DIFF_REPORT.md
+python scripts/validate_tasks.py tasks/pilot2
+python scripts/validate_pairs.py tasks/pilot2   # writes PAIR_DIFF_REPORT_pilot2.md
 python scripts/validate_alignment.py
+python scripts/regrade.py transcripts/<run_id>.jsonl   # re-score saved answers, no API calls
 python scripts/mutation_check.py        # injects 27 bugs; all must be caught
 python run_eval.py --provider mock --model mock-perfect --tasks tasks/development --trials 3
 ```

@@ -1,6 +1,7 @@
 """Validate every task: schema, cross-references, and oracle == hidden_reference."""
 
 import sys
+from pathlib import Path
 
 from _common import ROOT
 
@@ -10,7 +11,7 @@ from scopeshift.oracle import check_against_reference, run_oracle
 
 
 def main() -> int:
-    task_dir = ROOT / "tasks" / "development"
+    task_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "tasks" / "development"
     try:
         tasks = load_tasks(task_dir)
     except TaskValidationError as exc:

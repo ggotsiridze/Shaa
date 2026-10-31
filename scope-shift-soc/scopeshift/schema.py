@@ -16,7 +16,7 @@ from pydantic import (
 
 EVENT_ID_PATTERN = r"^E[1-9][0-9]*$"
 MAX_EVIDENCE_IDS = 4
-MAX_RATIONALE_CHARS = 600
+MAX_RATIONALE_CHARS = 2000  # rationale is not scored; v0.4 raised from 600 (pilot finding)
 
 
 class SourceClass(str, Enum):

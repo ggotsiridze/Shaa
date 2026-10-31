@@ -9,11 +9,12 @@ from scopeshift.schema import Task
 PROVIDER_NAMES = ("mock", "openai", "anthropic")
 
 
-def build_provider(name: str, model: str, tasks: list[Task], settings: dict | None = None) -> Provider:
+def build_provider(name: str, model: str, tasks: list[Task], settings: dict | None = None,
+                   prompt_path=None) -> Provider:
     if name == "mock":
         from scopeshift.providers.mock import MockProvider
 
-        return MockProvider.from_tasks(model, tasks, settings)
+        return MockProvider.from_tasks(model, tasks, settings, prompt_path)
     if name == "openai":
         from scopeshift.providers.openai_provider import OpenAIProvider
 

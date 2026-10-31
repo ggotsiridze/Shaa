@@ -9,10 +9,11 @@ import uuid
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 from scopeshift.errors import InfrastructureError
 from scopeshift.grader import ParseError, grade, parse_response
-from scopeshift.prompt import build_prompt
+from scopeshift.prompt import PROMPT_PATH, build_prompt
 from scopeshift.providers.base import Provider, ProviderResponse
 from scopeshift.schema import Task
 from scopeshift.taxonomy import Failure, classify
@@ -93,8 +94,8 @@ def call_with_retries(
 
 def run_trial(task: Task, provider: Provider, run_id: str, trial_index: int,
               max_attempts: int = DEFAULT_MAX_ATTEMPTS, backoff_s: float = 0.0,
-              jitter: float = 0.0) -> TrialRecord:
-    prompt = build_prompt(task)  # rebuilt per trial from immutable task data
+              jitter: float = 0.0, prompt_path: Path | None = None) -> TrialRecord:
+    prompt = build_prompt(task, prompt_path or PROMPT_PATH)  # rebuilt per trial from immutable task data
     rec = TrialRecord(
         run_id=run_id,
         trial_id=str(uuid.uuid4()),
@@ -149,7 +150,8 @@ def run_trial(task: Task, provider: Provider, run_id: str, trial_index: int,
 
 def run_eval(tasks: list[Task], provider: Provider, trials: int, run_id: str | None = None,
              max_attempts: int = DEFAULT_MAX_ATTEMPTS, backoff_s: float = 0.0, jitter: float = 0.0,
-             on_record: Callable[[TrialRecord], None] | None = None) -> tuple[str, list[TrialRecord]]:
+             on_record: Callable[[TrialRecord], None] | None = None,
+             prompt_path: Path | None = None) -> tuple[str, list[TrialRecord]]:
     """Run every task `trials` times, sequentially. `on_record` is called after each trial so a
     paid run is persisted incrementally (a crash loses at most the trial in flight)."""
     if trials < 1:
@@ -161,7 +163,7 @@ def run_eval(tasks: list[Task], provider: Provider, trials: int, run_id: str | N
     records = []
     for i in range(trials):
         for t in tasks:
-            rec = run_trial(t, provider, run_id, i, max_attempts, backoff_s, jitter)
+            rec = run_trial(t, provider, run_id, i, max_attempts, backoff_s, jitter, prompt_path)
             records.append(rec)
             if on_record is not None:
                 on_record(rec)

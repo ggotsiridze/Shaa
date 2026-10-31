@@ -26,7 +26,7 @@ from scopeshift.harness import DEFAULT_MAX_ATTEMPTS, TrialRecord, run_eval
 from scopeshift.loader import load_tasks
 from scopeshift.metrics import compute_metrics
 from scopeshift.oracle import check_against_reference
-from scopeshift.prompt import PROMPT_PATH, build_prompt
+from scopeshift.prompt import DEFAULT_PROMPT_VERSION, PROMPT_VERSIONS, build_prompt
 from scopeshift.providers import PROVIDER_NAMES, build_provider, provider_module
 from scopeshift.providers.mock import MOCK_MODELS
 
@@ -75,6 +75,7 @@ def planned_calls(n_tasks: int, trials: int) -> int:
 def plan_lines(args: argparse.Namespace, n_tasks: int, settings: dict) -> list[str]:
     calls = planned_calls(n_tasks, args.trials)
     lines = [
+        f"Prompt: {args.prompt_version}",
         f"Provider: {args.provider}",
         f"Model: {args.model}",
         f"Tasks: {n_tasks}",
@@ -107,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
     ap.add_argument("--backoff", type=float, default=None, help="base retry backoff seconds (default: 0 mock, 2 real)")
     ap.add_argument("--jitter", type=float, default=None, help="backoff jitter fraction 0..1 (default: 0 mock, 0.25 real)")
+    ap.add_argument("--prompt-version", choices=sorted(PROMPT_VERSIONS), default=DEFAULT_PROMPT_VERSION,
+                    help="v2 (default) = uncoached prompt; v1 = archived pilot prompt, for reproducing earlier runs")
     ap.add_argument("--structured-output", choices=["json_schema", "off"], default="json_schema")
     ap.add_argument("--temperature", type=float, default=None,
                     help="openai only; sent only if given (some models reject it)")
@@ -151,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: unknown mock model {args.model!r}", file=sys.stderr)
         return 2
 
+    prompt_path = PROMPT_VERSIONS[args.prompt_version]
     settings = generation_settings(args)
     mod = provider_module(args.provider)
     if mod is not None:
@@ -166,7 +170,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        provider = build_provider(args.provider, args.model, tasks, settings)
+        provider = build_provider(args.provider, args.model, tasks, settings, prompt_path)
     except ConfigurationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -197,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
     # carries their sha256 so the two can be matched).
     prompts = {}
     for t in tasks:
-        p = build_prompt(t)
+        p = build_prompt(t, prompt_path)
         prompts[t.task_id] = {"system": p.system, "user": p.user}
     (args.transcripts_dir / f"{run_id}.prompts.json").write_text(json.dumps(prompts, indent=2) + "\n", encoding="utf-8")
 
@@ -207,7 +211,8 @@ def main(argv: list[str] | None = None) -> int:
             fh.flush()
 
         run_id, records = run_eval(tasks, provider, args.trials, run_id=run_id, max_attempts=args.max_attempts,
-                                   backoff_s=args.backoff, jitter=args.jitter, on_record=persist)
+                                   backoff_s=args.backoff, jitter=args.jitter, on_record=persist,
+                                   prompt_path=prompt_path)
     finished = datetime.now(UTC)
     metrics = compute_metrics(records, tasks)
 
@@ -218,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
     summary = {
         "run_id": run_id, "provider": args.provider, "model": args.model,
         "returned_models": sorted({r.returned_model for r in records if r.returned_model}),
+        "prompt_version": args.prompt_version,
         "tasks_dir": str(args.tasks), "task_ids": [t.task_id for t in tasks], "trials": args.trials,
         "max_attempts": args.max_attempts, "backoff_s": args.backoff, "jitter": args.jitter,
         "generation_settings": provider.settings,
@@ -231,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         "environment": {"python": platform.python_version(), "platform": platform.platform(),
                         "pydantic": _pkg("pydantic"), "openai": _pkg("openai"), "anthropic": _pkg("anthropic"),
                         "git_commit": _git_commit(),
-                        "prompt_template_sha256": _sha256(PROMPT_PATH),
+                        "prompt_template_sha256": _sha256(prompt_path),
                         "task_files_sha256": {t.task_id: _sha256(args.tasks / f"{t.task_id}.json") for t in tasks}},
         "transcripts": str(transcript_path),
         "metrics": metrics,

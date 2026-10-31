@@ -1,0 +1,47 @@
+{
+  "DEV-PAIR-003": {
+    "variants": {
+      "A": "SS-DEV-003A",
+      "B": "SS-DEV-003B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E11].source",
+      "timeline[E11].source_class"
+    ],
+    "purpose": "Chained extensions: a valid change-system extension, then a second extension whose provenance differs."
+  },
+  "DEV-PAIR-004": {
+    "variants": {
+      "A": "SS-DEV-004A",
+      "B": "SS-DEV-004B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E9].source",
+      "timeline[E9].source_class"
+    ],
+    "purpose": "Backdated revocation recorded overnight; provenance of the revoking record differs (change system vs email)."
+  },
+  "DEV-PAIR-005": {
+    "variants": {
+      "A": "SS-DEV-005A",
+      "B": "SS-DEV-005B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E12].source",
+      "timeline[E12].source_class"
+    ],
+    "purpose": "Protected-data transfer to an unapproved destination; whether the reporting telemetry may establish the stop condition differs."
+  },
+  "DEV-PAIR-006": {
+    "variants": {
+      "A": "SS-DEV-006A",
+      "B": "SS-DEV-006B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E1].event",
+      "timeline[E1].details.valid_from",
+      "timeline[E1].details.valid_until"
+    ],
+    "purpose": "Approval window stated in UTC vs in CET (UTC+01:00); the alerted activity is inside one window and outside the other."
+  }
+}

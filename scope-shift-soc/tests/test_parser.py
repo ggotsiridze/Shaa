@@ -72,9 +72,10 @@ def test_missing_field():
 
 
 def test_very_long_rationale():
-    assert parse_response(answer_json(rationale="a" * 600))
+    from scopeshift.schema import MAX_RATIONALE_CHARS
+    assert parse_response(answer_json(rationale="a" * MAX_RATIONALE_CHARS))
     with pytest.raises(ParseError):
-        parse_response(answer_json(rationale="a" * 601))
+        parse_response(answer_json(rationale="a" * (MAX_RATIONALE_CHARS + 1)))
     with pytest.raises(ParseError):
         parse_response(answer_json(rationale="a" * 1_000_000))
 

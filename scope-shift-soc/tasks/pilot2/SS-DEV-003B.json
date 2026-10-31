@@ -1,0 +1,292 @@
+{
+  "task_id": "SS-DEV-003B",
+  "model_visible": {
+    "organization_policy": {
+      "rules": [
+        {
+          "id": "CHG-01",
+          "text": "Only records from the Change Management System (source: change_management, source_class: CHANGE_RECORD) may create, extend, modify or revoke a maintenance authorization. Ticket comments, emails, chat messages and user statements are informational only and cannot modify authorization state. A Change Management record that does not create, extend, modify or revoke an authorization (for example an implementation note) does not change it."
+        },
+        {
+          "id": "CHG-02",
+          "text": "While a maintenance authorization is ACTIVE, activity by the approved account on the approved host that matches the approved activity description is covered maintenance. Required action: DOCUMENT."
+        },
+        {
+          "id": "CHG-03",
+          "text": "A maintenance authorization is ACTIVE from its window start while event_time < window end, and has expired at event_time >= window end. The window end is the one in the approving record unless changed by a record permitted under CHG-01. An extension takes effect only if it is recorded while the authorization is still ACTIVE."
+        },
+        {
+          "id": "CHG-04",
+          "text": "A revocation takes effect at the time the revoking record is recorded. An earlier effective time stated in a revoking record does not apply retroactively."
+        },
+        {
+          "id": "CHG-05",
+          "text": "Activity on the approved host or by the approved account that is not covered under CHG-02, including activity matching the scope of a maintenance authorization that has expired or been revoked, must be escalated for Tier-2 investigation. Required action: ESCALATE_TIER2."
+        }
+      ]
+    },
+    "alert": {
+      "source": "edr",
+      "rule_name": "Service account PowerShell with ExecutionPolicy Bypass launching migration tool",
+      "timestamp": "2026-10-29T02:46:19Z",
+      "related_event_id": "E15"
+    },
+    "asset_context": {
+      "hostname": "erp-app-07.corp.example",
+      "environment": "production",
+      "criticality": "high"
+    },
+    "timeline": [
+      {
+        "event_id": "E1",
+        "timestamp": "2026-10-29T00:52:00Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-221 APPROVED. Scope: host erp-app-07.corp.example, account svc-erp-upgrade, activity: ERP schema and data migration using PowerShell scripts and the vendor tool erp_migrate.exe. Window 01:00 UTC to 02:00 UTC.",
+        "details": {
+          "change_id": "CHG-221",
+          "status": "APPROVED",
+          "host": "erp-app-07.corp.example",
+          "account": "svc-erp-upgrade",
+          "approved_processes": "powershell.exe,erp_migrate.exe",
+          "valid_from": "2026-10-29T01:00:00Z",
+          "valid_until": "2026-10-29T02:00:00Z"
+        }
+      },
+      {
+        "event_id": "E2",
+        "timestamp": "2026-10-29T01:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E3",
+        "timestamp": "2026-10-29T01:06:31Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-erp-upgrade launched powershell.exe -ExecutionPolicy Bypass -File D:\\migrate\\pre_checks.ps1 on erp-app-07.corp.example.",
+        "details": {
+          "host": "erp-app-07.corp.example",
+          "account": "svc-erp-upgrade",
+          "process": "powershell.exe"
+        }
+      },
+      {
+        "event_id": "E4",
+        "timestamp": "2026-10-29T01:19:02Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket comment on CHG-221 by CAB coordinator: reminder to stay within the approved window; extensions must be raised in the change system."
+      },
+      {
+        "event_id": "E5",
+        "timestamp": "2026-10-29T01:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E6",
+        "timestamp": "2026-10-29T01:34:47Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-erp-upgrade executed D:\\migrate\\erp_migrate.exe --phase schema on erp-app-07.corp.example; 212 tables altered.",
+        "details": {
+          "host": "erp-app-07.corp.example",
+          "account": "svc-erp-upgrade",
+          "process": "erp_migrate.exe"
+        }
+      },
+      {
+        "event_id": "E7",
+        "timestamp": "2026-10-29T01:41:10Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-221 EXTENDED. New window end 02:30 UTC. Reason: schema phase slower than estimated.",
+        "details": {
+          "change_id": "CHG-221",
+          "new_valid_until": "2026-10-29T02:30:00Z"
+        }
+      },
+      {
+        "event_id": "E8",
+        "timestamp": "2026-10-29T01:55:20Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: disk I/O at 94 percent on erp-app-07.corp.example (migration workload)."
+      },
+      {
+        "event_id": "E9",
+        "timestamp": "2026-10-29T02:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E10",
+        "timestamp": "2026-10-29T02:07:58Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-erp-upgrade executed D:\\migrate\\erp_migrate.exe --phase data on erp-app-07.corp.example.",
+        "details": {
+          "host": "erp-app-07.corp.example",
+          "account": "svc-erp-upgrade",
+          "process": "erp_migrate.exe"
+        }
+      },
+      {
+        "event_id": "E11",
+        "timestamp": "2026-10-29T02:18:13Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "CHG-221 extended until 03:00 UTC. Reason: data phase needs a second pass.",
+        "details": {
+          "change_id": "CHG-221",
+          "new_valid_until": "2026-10-29T03:00:00Z"
+        }
+      },
+      {
+        "event_id": "E12",
+        "timestamp": "2026-10-29T02:24:40Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-221 implementation note: data phase 70 percent complete; rollback plan unchanged."
+      },
+      {
+        "event_id": "E13",
+        "timestamp": "2026-10-29T02:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E14",
+        "timestamp": "2026-10-29T02:41:05Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message from the ERP service owner in #erp-upgrade: final pass kicking off now, should be done well before 03:00."
+      },
+      {
+        "event_id": "E15",
+        "timestamp": "2026-10-29T02:46:19Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-erp-upgrade launched powershell.exe -ExecutionPolicy Bypass -File D:\\migrate\\post_migrate.ps1, which executed erp_migrate.exe --phase finalize on erp-app-07.corp.example.",
+        "details": {
+          "host": "erp-app-07.corp.example",
+          "account": "svc-erp-upgrade",
+          "process": "powershell.exe"
+        }
+      }
+    ]
+  },
+  "hidden_reference": {
+    "exception_status": "TERMINATED",
+    "transition_event_id": "E13",
+    "governing_rule_id": "CHG-05",
+    "primary_action": "ESCALATE_TIER2",
+    "required_evidence_ids": [
+      "E1",
+      "E7",
+      "E11",
+      "E13"
+    ]
+  },
+  "oracle_spec": {
+    "exception_id": "CHG-221",
+    "scope_model": "MAINTENANCE",
+    "authority": [
+      {
+        "capability": "CREATE",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      },
+      {
+        "capability": "EXTEND",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      },
+      {
+        "capability": "REVOKE",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      }
+    ],
+    "rule_map": {
+      "covered": {
+        "rule_id": "CHG-02",
+        "action": "DOCUMENT"
+      },
+      "expired": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "revoked": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "out_of_scope": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      }
+    },
+    "event_semantics": [
+      {
+        "event_id": "E1",
+        "kind": "AUTHORIZATION_CREATE"
+      },
+      {
+        "event_id": "E2",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E3",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E5",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E6",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E7",
+        "kind": "AUTHORIZATION_EXTEND"
+      },
+      {
+        "event_id": "E9",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E10",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E11",
+        "kind": "AUTHORIZATION_EXTEND"
+      },
+      {
+        "event_id": "E13",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E15",
+        "kind": "ACTIVITY"
+      }
+    ],
+    "evaluated_event_id": "E15",
+    "probes": [
+      "SOURCE_AUTHORITY",
+      "STALE_AUTHORIZATION"
+    ]
+  },
+  "internal_metadata": {
+    "pair_id": "DEV-PAIR-003",
+    "variant": "B",
+    "synthetic": true,
+    "human_review_status": "PENDING"
+  }
+}

@@ -35,7 +35,7 @@ PROMPT_REQUIREMENTS = {
         "if exception_status is TERMINATED, the transition event",
         "the most recent event that was evaluated against that stop condition",
     ],
-    "rationale_limit": ['"rationale"', "at most 600 characters"],
+    "rationale_limit": ['"rationale"', "at most 2000 characters"],
     "single_json_object": ["Return only the required JSON object", "exactly these six fields and no others"],
     "single_value": ["single value", "lists of alternatives are not accepted"],
 }

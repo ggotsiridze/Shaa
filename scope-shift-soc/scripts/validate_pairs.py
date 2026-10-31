@@ -2,6 +2,7 @@
 
 import json
 import sys
+from pathlib import Path
 
 from _common import ROOT
 
@@ -16,7 +17,8 @@ def _fmt(v: object) -> str:
 
 
 def main() -> int:
-    task_dir = ROOT / "tasks" / "development"
+    task_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "tasks" / "development"
+    report = ROOT / ("PAIR_DIFF_REPORT.md" if task_dir.name == "development" else f"PAIR_DIFF_REPORT_{task_dir.name}.md")
     try:
         tasks = load_tasks(task_dir)
         pairs = load_pairs(task_dir)
@@ -42,9 +44,9 @@ def main() -> int:
         if r.problems:
             lines += ["", "### Problems", ""] + [f"- {p}" for p in r.problems]
         lines.append("")
-    (ROOT / "PAIR_DIFF_REPORT.md").write_text("\n".join(lines), encoding="utf-8")
+    report.write_text("\n".join(lines), encoding="utf-8")
     ok = all(r.ok for r in reports)
-    print(f"{len(reports)} pairs checked: {'PASS' if ok else 'FAIL'} (report: PAIR_DIFF_REPORT.md)")
+    print(f"{len(reports)} pairs checked: {'PASS' if ok else 'FAIL'} (report: {report.name})")
     return 0 if ok else 1
 
 

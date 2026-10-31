@@ -1,7 +1,6 @@
 import json
 
 import pytest
-from conftest import ROOT
 
 from scopeshift.prompt import build_prompt, load_template
 
@@ -65,6 +64,7 @@ def test_template_has_no_task_specific_content():
 
 
 def test_prompt_does_not_request_chain_of_thought():
-    text = (ROOT / "prompts" / "model_under_test_v1.md").read_text().lower()
+    from scopeshift.prompt import PROMPT_VERSIONS
+    text = " ".join(p.read_text() for p in PROMPT_VERSIONS.values()).lower()
     for phrase in ("step by step", "chain of thought", "think aloud", "show your reasoning"):
         assert phrase not in text

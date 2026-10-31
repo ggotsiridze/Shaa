@@ -227,3 +227,20 @@ REVIEW-021 to REVIEW-023, REVIEW-025 and REVIEW-026: found while applying repair
 - **Fix:** E1 now carries `approved_processes: "powershell.exe,dbengine_update.exe"`, matching its text and identical in both variants. Maintenance coverage requires the event's own `process` to be in that list.
 - **Regression tests:** `::test_maintenance_unapproved_process_not_covered`, `::test_maintenance_missing_process_not_covered`, `::test_pair1_activities_match_approved_processes`
 - **Mutation:** M23. Killed.
+
+---
+
+# Real-model pilot findings (v0.4)
+
+## REVIEW-027 (found in the real pilot): rationale length limit caused non-capability failures
+- **File:** `scopeshift/schema.py` (`MAX_RATIONALE_CHARS`), prompt
+- **Symptom:** claude-haiku-5-5 failed 3 of 20 trials as PARSE_FAILURE. Every scored field was correct; the only problem was a rationale of about 790 characters against the 600 limit.
+- **Impact:** A not-scored formatting rule lowered Haiku's pass^5 from 1.0 to 0.5. The benchmark would have reported a "limitation" that was really verbosity.
+- **Fix:** The limit was raised to 2000 in schema, grader requirements, prompt v2 and the alignment doc. The saved raw answers were re-graded offline (`scripts/regrade.py`, no API calls), and the original summaries are kept. The re-graded file notes that the model had been instructed with 600.
+- **Regression tests:** `tests/test_parser.py::test_very_long_rationale` (now uses the constant); alignment check on `at most 2000 characters`.
+
+## REVIEW-028 (found by the pair validator while building pilot2): alert source differed within a pair
+- **File:** `tasks/pilot2/SS-DEV-005A/B.json`
+- **Symptom:** The alert `source` was copied from the last event (`edr` vs `dlp`). That made an undeclared model-visible difference, which hints at the answer.
+- **Fix:** The alert source is `siem` in both variants.
+- **Regression tests:** `tests/test_pilot2_tasks.py::test_pairs_differ_only_in_declared_fields`, `::test_stop_condition_needs_permitted_telemetry` (alert identical across the pair).

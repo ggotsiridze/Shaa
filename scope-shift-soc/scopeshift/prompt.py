@@ -8,7 +8,15 @@ from pathlib import Path
 
 from scopeshift.schema import Task
 
-PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "model_under_test_v1.md"
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+# v1: the coached pilot prompt (frozen, archived so pilot runs stay reproducible).
+# v2: coaching removed; only the task, the answer contract and field definitions remain.
+PROMPT_VERSIONS = {
+    "v1": _PROMPTS_DIR / "archive" / "model_under_test_v1.md",
+    "v2": _PROMPTS_DIR / "model_under_test_v2.md",
+}
+DEFAULT_PROMPT_VERSION = "v2"
+PROMPT_PATH = PROMPT_VERSIONS[DEFAULT_PROMPT_VERSION]
 SYSTEM_MARK = "<!-- SYSTEM -->"
 USER_MARK = "<!-- USER -->"
 PLACEHOLDER = "{{INCIDENT_JSON}}"

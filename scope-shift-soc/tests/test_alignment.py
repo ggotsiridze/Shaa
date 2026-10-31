@@ -15,13 +15,15 @@ def test_every_weighted_component_has_requirement():
 
 
 def test_alignment_fails_if_prompt_drops_a_field():
-    text = (ROOT / "prompts" / "model_under_test_v1.md").read_text()
+    from scopeshift.prompt import PROMPT_PATH
+    text = PROMPT_PATH.read_text()
     stripped = "\n".join(ln for ln in text.splitlines() if '"governing_rule_id"' not in ln)
     _, problems = check_alignment(ROOT, prompt_text=stripped)
     assert any("governing_rule_id" in p for p in problems)
 
 
 def test_alignment_fails_if_prompt_drops_evidence_cap():
-    text = (ROOT / "prompts" / "model_under_test_v1.md").read_text().replace("1 to 4 distinct", "some")
+    from scopeshift.prompt import PROMPT_PATH
+    text = PROMPT_PATH.read_text().replace("1 to 4 distinct", "some")
     _, problems = check_alignment(ROOT, prompt_text=text)
     assert any("evidence_coverage" in p for p in problems)

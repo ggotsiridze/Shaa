@@ -381,3 +381,15 @@ def test_pair1_activities_match_approved_processes(by_id):
         assert "powershell.exe" in tl["E1"].event.lower() or "PowerShell" in tl["E1"].event
         assert "dbengine_update.exe" in tl["E1"].event
     assert all(run_oracle(by_id["SS-DEV-001A"]).event_coverage.values())
+
+
+def test_uncovered_alerted_event_is_not_a_competing_obligation():
+    # The alerted event's own coverage selects the rule (out_of_scope -> PT-05); only OTHER
+    # earlier uncovered activity creates a competing obligation.
+    from conftest import build_pt_task, roe, transfer
+    t = build_pt_task([roe("E1", "2026-10-30T08:55:00Z"),
+                       transfer("E2", "2026-10-30T10:00:00Z", "192.0.2.77", src="edr", cls="ENDPOINT_TELEMETRY")])
+    r = run_oracle(t)
+    assert r.exception_status.value == "ACTIVE" and r.event_coverage["E2"] is False
+    assert r.governing_rule_id == "PT-05" and r.primary_action.value == "ESCALATE_TIER2"
+    assert not [p for p in check_against_reference(t) if "competing" in p]

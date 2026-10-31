@@ -346,7 +346,9 @@ def check_against_reference(task: Task) -> list[str]:
     # alerted event and making the gold action non-unique (REVIEW-025).
     order = [e.event_id for e in task.model_visible.timeline]
     cutoff = order.index(res.transition_event_id) if res.transition_event_id else len(order)
-    uncovered = [eid for eid, ok in res.event_coverage.items() if not ok and order.index(eid) < cutoff]
+    # The alerted event is exempt: its own coverage is what selects the governing rule.
+    uncovered = [eid for eid, ok in res.event_coverage.items()
+                 if not ok and order.index(eid) < cutoff and eid != task.oracle_spec.evaluated_event_id]
     if uncovered:
         problems.append(f"{task.task_id}: activity {uncovered} is not covered before the transition; "
                         "it creates a competing escalation obligation (ambiguous gold action)")
