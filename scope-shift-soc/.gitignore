@@ -3,7 +3,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+# secrets: never commit keys
 .env
+.env.*
+!.env.example
 results/*
 !results/.gitkeep
 transcripts/*

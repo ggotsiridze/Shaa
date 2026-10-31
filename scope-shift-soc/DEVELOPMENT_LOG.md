@@ -55,6 +55,18 @@ more than one defensible answer. Repairs (details and tests in BUG_LOG.md, REVIE
 8. **Environment.** Python 3.12.3, exact pins, `pip check` clean (REVIEW-020).
 9. **Mutations:** 7 new ones (M13–M19) covering the new logic. 19/19 killed.
 
+## 2026-10-31: real-model support (OpenAI provider), no benchmark changes
+
+- Added `scopeshift/providers/openai_provider.py`, built on the official SDK (`openai==3.42.0`, pinned) and the Responses API. It sends `prompt.system` as `instructions` and `prompt.user` as `input`. An optional strict JSON schema restates only the field set, types and enums. `store=false`. SDK internal retries are disabled, so the harness counts every attempt.
+- Errors are mapped to the existing infrastructure taxonomy. Added the non-retryable kinds QUOTA and BAD_REQUEST. API keys are redacted from all error text.
+- The harness records extra audit fields: total tokens, response ID, returned model, status, provider response dump, retry count and prompt hashes. Retries have optional jitter (default 0, so mocks are unchanged). Records are written incrementally.
+- `run_eval.py` gains `--provider openai`, `--task-ids`, `--dry-run` (zero calls), `--validate-api` (model metadata only), a plan printout, confirmation before paid calls, generation flags (sent only when given), and a run manifest.
+- `total_cost_usd` is `null` when any trial's cost is unknown; real providers never hard-code prices. Mock runs still report 0.0.
+- Tests: 37 adapter tests (fake SDK client) plus 9 wire-level tests (real SDK, in-memory HTTP transport). No network and no paid calls.
+- Mutations M24 (SDK retries re-enabled) and M25 (redaction disabled) added.
+- **Unchanged:** tasks, policy text, gold answers, oracle, grader, weights, evidence rule, pairs, taxonomy, metric definitions.
+- **Not yet done:** a real paid call. This cloud session has no `OPENAI_API_KEY`, and its network policy blocks `api.openai.com`.
+
 ## 2026-10-31: v0.3 repair after second external review
 
 1. **REVIEW-024 (blocker) verified, then fixed.** Pair 2 transfers did not show their own method. E4/E6 now carry `technique: exfiltration_simulation` (identical across the pair), and transfer coverage reads it. Transfer sink rules were also aligned with the English text: the sink is required for protected data or exfiltration simulation.

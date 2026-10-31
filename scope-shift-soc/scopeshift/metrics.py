@@ -119,7 +119,9 @@ def compute_metrics(records: list[TrialRecord], tasks: list[Task]) -> dict:
         "per_task_pass_pow_k": task_pass_pow_k,
         "per_pair_pass_pow_k": pair_pass_pow_k,
         "failure_type_counts": _failure_counts(records),
-        "total_cost_usd": round(sum(r.cost_usd for r in records), 6),
+        # None when any trial's cost is unknown (real providers: no hard-coded pricing).
+        "total_cost_usd": (None if any(r.cost_usd is None for r in records)
+                           else round(sum(r.cost_usd for r in records), 6)),
     }
 
 

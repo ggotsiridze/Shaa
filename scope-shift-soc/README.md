@@ -30,7 +30,7 @@ See `RESEARCH_DECISION.md` for scope, related work, non-claims, and pivot/abando
 | `scopeshift/pair_validation.py` | flattened model-visible diff; must equal declared differences |
 | `scopeshift/alignment.py` | prompt/grader alignment check |
 | `scopeshift/harness.py`, `metrics.py` | isolated trials, bounded retries, pilot metrics, pass^k |
-| `scopeshift/providers/` | provider interface + mock providers (no real providers yet) |
+| `scopeshift/providers/` | provider interface, mock providers, OpenAI provider (Responses API) |
 | `scripts/` | `validate_tasks.py`, `validate_pairs.py`, `validate_alignment.py`, `mutation_check.py` |
 
 ## What the oracle proves
@@ -55,7 +55,7 @@ pytest -q
 python scripts/validate_tasks.py
 python scripts/validate_pairs.py        # also regenerates PAIR_DIFF_REPORT.md
 python scripts/validate_alignment.py
-python scripts/mutation_check.py        # injects 23 bugs; all must be caught
+python scripts/mutation_check.py        # injects 25 bugs; all must be caught
 python run_eval.py --provider mock --model mock-perfect --tasks tasks/development --trials 3
 ```
 
@@ -65,6 +65,88 @@ Mock models: `mock-perfect`, `mock-wrong-action`, `mock-missed-transition`,
 
 Per-trial records go to `transcripts/<run_id>.jsonl`. Run summaries and metrics go to
 `results/<run_id>.json`. Both are git-ignored.
+
+## Running a real model (OpenAI)
+
+> **Real API calls can incur charges on your account.** Every paid run first prints the plan
+> (provider, model, number of tasks, trials and total calls) and asks for confirmation. `--yes`
+> confirms non-interactively.
+
+1. **Install.** `pip install -r requirements.txt` (includes the official `openai` SDK, pinned).
+2. **Set the key in your shell.** Never put it in a file you commit:
+
+   ```bash
+   export OPENAI_API_KEY="<your key>"
+   ```
+
+   `.env` and `.env.*` are git-ignored. `.env.example` lists the variable name only. The key is
+   read from the environment, never printed (the plan shows only `set` / `NOT SET`), and is
+   redacted from any error text stored in results.
+3. **Dry run.** Validates tasks and settings and prints the plan. Makes zero model calls:
+
+   ```bash
+   python run_eval.py --provider openai --model <MODEL> --trials 5 --dry-run
+   ```
+
+   Optional: `--validate-api` checks that the key works and the model is accessible by
+   retrieving the model's metadata. No output is generated.
+4. **One real request** (1 task × 1 trial = 1 call):
+
+   ```bash
+   python run_eval.py --provider openai --model <MODEL> --task-ids SS-DEV-001A --trials 1
+   ```
+
+5. **All 4 tasks once** (4 calls):
+
+   ```bash
+   python run_eval.py --provider openai --model <MODEL> --trials 1
+   ```
+
+6. **Pilot: 4 tasks × 5 trials** (20 calls):
+
+   ```bash
+   python run_eval.py --provider openai --model <MODEL> --trials 5
+   ```
+
+7. **Results:**
+   - `results/<run_id>.json`: run manifest and metrics. It records the requested and returned
+     model IDs, generation settings, start/end time, provider-reported token usage, Python,
+     package and git versions, and sha256 hashes of the prompt template and task files.
+   - `transcripts/<run_id>.jsonl`: one line per trial. Each line has the raw model text
+     (`raw_response`, exactly as returned), the parsed answer, parse error, component scores,
+     strict pass, failure types, latency, attempts and retries, tokens, provider response ID,
+     returned model, response status, a JSON dump of the provider response, and the
+     infrastructure error kind if any.
+   - `transcripts/<run_id>.prompts.json`: the exact system and user prompt sent for each task.
+     Every trial records their sha256 hashes.
+
+**What the model receives:** the system prompt as `instructions` and the incident JSON as
+`input`. With the default `--structured-output json_schema`, it also receives a strict JSON
+schema restating the answer contract the prompt already gives: the six fields, their types and
+the two enums. Length, item-count and ID-format limits are *not* in the schema, so breaking
+them still shows up as a parse failure. `--structured-output off` sends the prompt alone.
+`store=false` is set. The model never receives task IDs, pair or variant information,
+reference answers or oracle data. No second model judges, cleans up or re-asks: the
+deterministic grader scores the raw text.
+
+**Generation settings:** `--temperature`, `--max-output-tokens` and `--reasoning-effort` are
+sent **only when given**, because some models reject them. Every run records exactly what was
+sent. Even with `--temperature 0`, OpenAI does not guarantee identical outputs, so the eval runs
+several trials and reports pass^k.
+
+**Infrastructure failure vs model failure:**
+- **Infrastructure failure** (`infrastructure_failure: true`, never scored against the model):
+  timeouts, network errors, 429 rate limits, 5xx errors and responses the API marks as failed
+  are retried up to `--max-attempts` (default 3) with exponential backoff (2 s base) and ±25%
+  jitter. Auth errors, quota exhaustion and bad requests (e.g. an unknown model or unsupported
+  parameter) stop immediately. The SDK's own retries are disabled, so every attempt is counted.
+- **Model failure:** any completed response. That includes wrong answers, malformed or
+  truncated JSON, empty output and refusals. These are graded as returned and are **never
+  retried**.
+
+**Cost:** token usage reported by the API is recorded per trial and summed per run. Dollar cost
+is *not* computed, because no pricing is hard-coded. Multiply `usage_reported` by the model's
+current price. Usage of failed attempts is unknown and is recorded as `null`, never guessed.
 
 ## Key conventions
 

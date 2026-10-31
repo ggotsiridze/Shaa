@@ -72,6 +72,10 @@ MUTATIONS = [
      "    if uncovered:\n", "    if False:\n"),
     ("M23 maintenance coverage ignores the approved activity (process)", "scopeshift/oracle.py",
      ' and d.get("process") in self.processes', ""),
+    ("M24 OpenAI SDK internal retries re-enabled (uncounted attempts)", "scopeshift/providers/openai_provider.py",
+     "client = OpenAI(api_key=self._api_key, max_retries=0,", "client = OpenAI(api_key=self._api_key, max_retries=2,"),
+    ("M25 API-key redaction disabled", "scopeshift/errors.py",
+     "    for secret in extra_secrets:\n", "    return text\n    for secret in extra_secrets:\n"),
 ]
 
 

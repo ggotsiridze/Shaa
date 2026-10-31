@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import random
 import time
 import uuid
 from collections.abc import Callable
@@ -40,10 +42,20 @@ class TrialRecord:
     attempt_count: int = 0
     infrastructure_failure: bool = False
     infrastructure_error: str | None = None
+    infrastructure_error_kind: str | None = None
     model_failure: bool = False
-    input_tokens: int = 0
-    output_tokens: int = 0
-    cost_usd: float = 0.0
+    # Usage as REPORTED by the provider for the completed attempt; None = not reported.
+    input_tokens: int | None = 0
+    output_tokens: int | None = 0
+    total_tokens: int | None = None
+    cost_usd: float | None = 0.0  # None = not computed (no hard-coded pricing)
+    retry_count: int = 0
+    response_id: str | None = None
+    returned_model: str | None = None
+    provider_status: str | None = None
+    provider_meta: dict = field(default_factory=dict)
+    prompt_system_sha256: str | None = None
+    prompt_user_sha256: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -55,10 +67,13 @@ def call_with_retries(
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     backoff_s: float = 0.0,
     sleep: Callable[[float], None] = time.sleep,
+    jitter: float = 0.0,
+    rng: Callable[[], float] = random.random,
 ) -> tuple[ProviderResponse | None, int, InfrastructureError | None]:
     """Retry ONLY retryable infrastructure errors, at most max_attempts calls total.
 
-    A completed response is returned as-is, even if it is wrong or unparseable."""
+    A completed response is returned as-is, even if it is wrong or unparseable.
+    Delay before retry n is backoff_s * 2**(n-1), scaled by a factor in [1-jitter, 1+jitter]."""
     if max_attempts < 1:
         raise ValueError("max_attempts must be >= 1")
     last_err: InfrastructureError | None = None
@@ -69,12 +84,16 @@ def call_with_retries(
             last_err = exc
             if not exc.retryable or attempt == max_attempts:
                 return None, attempt, exc
-            sleep(backoff_s * (2 ** (attempt - 1)))
+            delay = backoff_s * (2 ** (attempt - 1))
+            if jitter:
+                delay *= 1 + jitter * (2 * rng() - 1)
+            sleep(delay)
     return None, max_attempts, last_err  # pragma: no cover
 
 
 def run_trial(task: Task, provider: Provider, run_id: str, trial_index: int,
-              max_attempts: int = DEFAULT_MAX_ATTEMPTS, backoff_s: float = 0.0) -> TrialRecord:
+              max_attempts: int = DEFAULT_MAX_ATTEMPTS, backoff_s: float = 0.0,
+              jitter: float = 0.0) -> TrialRecord:
     prompt = build_prompt(task)  # rebuilt per trial from immutable task data
     rec = TrialRecord(
         run_id=run_id,
@@ -86,21 +105,31 @@ def run_trial(task: Task, provider: Provider, run_id: str, trial_index: int,
         provider=provider.name,
         settings=dict(provider.settings),
         timestamp=datetime.now(UTC).isoformat(),
+        prompt_system_sha256=hashlib.sha256(prompt.system.encode()).hexdigest(),
+        prompt_user_sha256=hashlib.sha256(prompt.user.encode()).hexdigest(),
     )
     start = time.perf_counter()
-    response, attempts, err = call_with_retries(provider, prompt, max_attempts, backoff_s)
-    rec.latency_s = round(time.perf_counter() - start, 6)
+    response, attempts, err = call_with_retries(provider, prompt, max_attempts, backoff_s, jitter=jitter)
+    rec.latency_s = round(time.perf_counter() - start, 6)  # wall clock, including retries/backoff
     rec.attempt_count = attempts
+    rec.retry_count = attempts - 1
 
     if err is not None:
         rec.infrastructure_failure = True
         rec.infrastructure_error = str(err)
+        rec.infrastructure_error_kind = err.kind.value
         rec.failure_types = [Failure.INFRASTRUCTURE_FAILURE.value]
+        if provider.paid:  # usage of failed attempts is unknown: record None, never a guess
+            rec.input_tokens = rec.output_tokens = rec.total_tokens = None
+            rec.cost_usd = None
         return rec
 
     assert response is not None
-    rec.raw_response = response.text
+    rec.raw_response = response.text  # exactly as returned; parsing below never edits it
     rec.input_tokens, rec.output_tokens, rec.cost_usd = response.input_tokens, response.output_tokens, response.cost_usd
+    rec.total_tokens = response.total_tokens
+    rec.response_id, rec.returned_model, rec.provider_status = response.response_id, response.returned_model, response.status
+    rec.provider_meta = dict(response.raw_meta)
     try:
         answer = parse_response(response.text)
     except ParseError as exc:
@@ -119,13 +148,21 @@ def run_trial(task: Task, provider: Provider, run_id: str, trial_index: int,
 
 
 def run_eval(tasks: list[Task], provider: Provider, trials: int, run_id: str | None = None,
-             max_attempts: int = DEFAULT_MAX_ATTEMPTS, backoff_s: float = 0.0) -> tuple[str, list[TrialRecord]]:
+             max_attempts: int = DEFAULT_MAX_ATTEMPTS, backoff_s: float = 0.0, jitter: float = 0.0,
+             on_record: Callable[[TrialRecord], None] | None = None) -> tuple[str, list[TrialRecord]]:
+    """Run every task `trials` times, sequentially. `on_record` is called after each trial so a
+    paid run is persisted incrementally (a crash loses at most the trial in flight)."""
     if trials < 1:
         raise ValueError("trials must be >= 1")
     ids = [t.task_id for t in tasks]
     if len(ids) != len(set(ids)):
         raise ValueError(f"duplicate task ids in run: {ids}")
     run_id = run_id or f"run-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-    records = [run_trial(t, provider, run_id, i, max_attempts, backoff_s)
-               for i in range(trials) for t in tasks]
+    records = []
+    for i in range(trials):
+        for t in tasks:
+            rec = run_trial(t, provider, run_id, i, max_attempts, backoff_s, jitter)
+            records.append(rec)
+            if on_record is not None:
+                on_record(rec)
     return run_id, records
