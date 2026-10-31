@@ -1,0 +1,96 @@
+{
+  "run_id": "run-20261031T205955Z-anthropic-b892764d",
+  "provider": "anthropic",
+  "model": "claude-opus-5-5",
+  "returned_models": [
+    "claude-opus-5-5"
+  ],
+  "prompt_version": "v2",
+  "tasks_dir": "tasks/development",
+  "task_ids": [
+    "SS-DEV-001A",
+    "SS-DEV-001B",
+    "SS-DEV-002A",
+    "SS-DEV-002B"
+  ],
+  "trials": 3,
+  "max_attempts": 3,
+  "backoff_s": 2.0,
+  "jitter": 0.25,
+  "generation_settings": {
+    "structured_output": "json_schema",
+    "max_output_tokens": 16000,
+    "reasoning_effort": null,
+    "timeout_s": 120.0,
+    "sdk": "anthropic-python 2.3.0",
+    "api": "messages",
+    "base_url": "https://api.anthropic.com",
+    "thinking": "model default (not sent)",
+    "refusal_fallbacks": "disabled (a fallback would let another model answer)"
+  },
+  "started_at": "2026-10-31T20:59:55.054482+00:00",
+  "finished_at": "2026-10-31T21:01:09.373584+00:00",
+  "wall_clock_s": 74.319,
+  "usage_reported": {
+    "input_tokens": 42000,
+    "output_tokens": 6437,
+    "total_tokens": null,
+    "note": "provider-reported usage; None if any trial did not report it"
+  },
+  "cost": {
+    "total_cost_usd": null,
+    "note": "not computed for real providers (no hard-coded pricing); derive from usage_reported"
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+    "pydantic": "2.14.2",
+    "openai": "3.42.0",
+    "anthropic": "2.3.0",
+    "git_commit": "f3bcb10159f7f3e1e309a64ffde31fe63344f281",
+    "prompt_template_sha256": "7d665a1d6b3ff2296e87d007147658b9ea79a2e332fe2916d743c05aca48d55f",
+    "task_files_sha256": {
+      "SS-DEV-001A": "70a401a92f350f7827a47dd43f558b619f1f15379004f45533f7ec5a6f9b6781",
+      "SS-DEV-001B": "9f4163eb2324eaf40ff66623edf648aad099ba6fad95a483217c7d09de739c61",
+      "SS-DEV-002A": "aec0b1671f4f9fb3b80afb211228cd5aa1737f23efbcba637cb7200bf29b8398",
+      "SS-DEV-002B": "3290ac800d62d622921528779696b96d72bc27f64e12b9aae5f117ec57082d6d"
+    }
+  },
+  "transcripts": "/home/user/shaa/scope-shift-soc/transcripts/run-20261031T205955Z-anthropic-b892764d.jsonl",
+  "metrics": {
+    "n_trials_total": 12,
+    "n_trials_scored": 12,
+    "trials_per_task": 3,
+    "task_pass_rate": 1.0,
+    "pair_pass_rate": 1.0,
+    "mean_score": 1.0,
+    "exception_state_accuracy": 1.0,
+    "transition_event_accuracy": 1.0,
+    "governing_rule_accuracy": 1.0,
+    "primary_action_accuracy": 1.0,
+    "evidence_coverage": 1.0,
+    "source_authority_pair_pass_rate": 1.0,
+    "authority_contrast_consistency": 1.0,
+    "premature_termination_rate": 0.0,
+    "missed_termination_rate": 0.0,
+    "stale_authorization_rate": 0.0,
+    "parse_failure_rate": 0.0,
+    "infrastructure_failure_rate": 0.0,
+    "strict_pass_pow_3": 1.0,
+    "pair_pass_pow_3": 1.0,
+    "strict_pass_at_3_any": 1.0,
+    "tasks_incomplete_due_to_infra": [],
+    "per_task_pass_pow_k": {
+      "SS-DEV-001A": true,
+      "SS-DEV-001B": true,
+      "SS-DEV-002A": true,
+      "SS-DEV-002B": true
+    },
+    "per_pair_pass_pow_k": {
+      "DEV-PAIR-001": true,
+      "DEV-PAIR-002": true
+    },
+    "failure_type_counts": {},
+    "total_cost_usd": null
+  }
+}
