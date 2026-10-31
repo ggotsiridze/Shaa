@@ -14,7 +14,12 @@ _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 PROMPT_VERSIONS = {
     "v1": _PROMPTS_DIR / "archive" / "model_under_test_v1.md",
     "v2": _PROMPTS_DIR / "model_under_test_v2.md",
+    # v3: same wording as v2, but timeline events are shown as text only. The structured `details`
+    # objects are the oracle's encoding of each event's text; showing them hands the model
+    # pre-computed values (e.g. an extension's resulting window end) that a real log would not.
+    "v3": _PROMPTS_DIR / "model_under_test_v3.md",
 }
+TEXT_ONLY_VERSIONS = {"v3"}
 DEFAULT_PROMPT_VERSION = "v2"
 PROMPT_PATH = PROMPT_VERSIONS[DEFAULT_PROMPT_VERSION]
 SYSTEM_MARK = "<!-- SYSTEM -->"
@@ -39,11 +44,15 @@ def load_template(path: Path = PROMPT_PATH) -> tuple[str, str]:
     return system, user
 
 
-def render_incident(task: Task) -> str:
+def render_incident(task: Task, text_only: bool = False) -> str:
     visible = task.model_visible.model_dump(mode="json")
+    if text_only:
+        for event in visible["timeline"]:
+            event.pop("details", None)
     return json.dumps(visible, indent=2, ensure_ascii=False)
 
 
 def build_prompt(task: Task, path: Path = PROMPT_PATH) -> Prompt:
     system, user_template = load_template(path)
-    return Prompt(system=system, user=user_template.replace(PLACEHOLDER, render_incident(task)))
+    text_only = Path(path).resolve() in {PROMPT_VERSIONS[v].resolve() for v in TEXT_ONLY_VERSIONS}
+    return Prompt(system=system, user=user_template.replace(PLACEHOLDER, render_incident(task, text_only)))

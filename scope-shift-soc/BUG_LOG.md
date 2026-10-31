@@ -244,3 +244,11 @@ REVIEW-021 to REVIEW-023, REVIEW-025 and REVIEW-026: found while applying repair
 - **Symptom:** The alert `source` was copied from the last event (`edr` vs `dlp`). That made an undeclared model-visible difference, which hints at the answer.
 - **Fix:** The alert source is `siem` in both variants.
 - **Regression tests:** `tests/test_pilot2_tasks.py::test_pairs_differ_only_in_declared_fields`, `::test_stop_condition_needs_permitted_telemetry` (alert identical across the pair).
+
+## REVIEW-029: SS-DEV-007A alerted event named an unapproved binary (task bug, found by a real run)
+- Found: Haiku (prompt v3, 1 trial) answered ACTIVE / CHG-05 / ESCALATE_TIER2 on 007A. Its rationale said the
+  alerted PowerShell script "started disp+work.exe", which is not an approved process.
+- Cause: the event text said the script started disp+work.exe; the oracle only saw process=powershell.exe.
+  The model's reading was defensible, so the gold answer was ambiguous.
+- Fix: the alerted event now runs post_patch_check.ps1 only. Tasks regenerated; validators pass.
+  The run that found it is kept in results/ unchanged (it was graded against the old task).

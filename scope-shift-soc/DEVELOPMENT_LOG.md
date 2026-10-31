@@ -152,3 +152,12 @@ more than one defensible answer. Repairs (details and tests in BUG_LOG.md, REVIE
 - **Source authority on 001B cannot be diagnosed from a single answer.** "Trusted the comment"
   and "missed the expiry" give the same answer. Only the pair-level metrics speak to authority
   there (REVIEW-021).
+
+## v0.5: long-timeline candidates (tasks/pilot3) and text-only prompt v3
+- Real runs (prompt v2, 3 trials): pilot2 = 100% for Opus, Sonnet, Haiku; dev = 100% / 100% / 92%.
+- tasks/pilot3: 4 pairs, 72-84 events each (noise, look-alike change IDs and sink IPs, late and relative
+  extensions, local-time windows). Generators: scripts/gen_pilot2.py, scripts/gen_pilot3.py.
+- Prompt v3 = v2 wording, timeline shown without the structured `details` (they pre-compute answers).
+- Probe (1 trial each): pilot3 v2: Opus 8/8, Haiku 8/8. pilot3 v3: Opus 8/8, Haiku 7/8 (miss was a task
+  bug, REVIEW-029).
+- Finding so far: current Claude models do not fail this task family at the difficulty built so far.

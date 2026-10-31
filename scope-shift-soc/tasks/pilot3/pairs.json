@@ -1,0 +1,47 @@
+{
+  "DEV-PAIR-007": {
+    "variants": {
+      "A": "SS-DEV-007A",
+      "B": "SS-DEV-007B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E42].event",
+      "timeline[E42].details.new_valid_until"
+    ],
+    "purpose": "Two chained change-system extensions in a long noisy log; whether the second is recorded before or after the effective end set by the first differs."
+  },
+  "DEV-PAIR-008": {
+    "variants": {
+      "A": "SS-DEV-008A",
+      "B": "SS-DEV-008B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E54].event",
+      "timeline[E54].details.change_id"
+    ],
+    "purpose": "Extension recorded for the alerted change vs for a look-alike change (CHG-7014) on a sister host."
+  },
+  "DEV-PAIR-009": {
+    "variants": {
+      "A": "SS-DEV-009A",
+      "B": "SS-DEV-009B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E77].event",
+      "timeline[E77].details.destination_ip",
+      "timeline[E77].details.destination_host"
+    ],
+    "purpose": "Exfiltration simulation to the approved sink vs to a look-alike 'backup sink' a tester mentioned only in chat."
+  },
+  "DEV-PAIR-010": {
+    "variants": {
+      "A": "SS-DEV-010A",
+      "B": "SS-DEV-010B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E67].event",
+      "timeline[E67].details.new_valid_until"
+    ],
+    "purpose": "Window in local time (UTC+02:00) with a relative extension (90 vs 60 minutes); the alert at 16:12 UTC is inside one window and outside the other."
+  }
+}

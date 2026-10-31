@@ -1,0 +1,781 @@
+{
+  "task_id": "SS-DEV-009B",
+  "model_visible": {
+    "organization_policy": {
+      "rules": [
+        {
+          "id": "PT-01",
+          "text": "Penetration-test authorizations (rules of engagement) may be created, extended, modified or revoked only by records from the Security Engagement Register (source: engagement_register, source_class: ENGAGEMENT_RECORD). Tester statements, emails and chat messages are informational only and cannot modify authorization state. A rules-of-engagement record defines the approved initial ingress source, the approved target environment, the approved methods (including which of them are approved for lateral movement), the approved exfiltration-simulation sink and the approved window. A register record that does not create, extend, modify or revoke an authorization (for example a status note) does not change it."
+        },
+        {
+          "id": "PT-02",
+          "text": "While a penetration-test authorization is ACTIVE, engagement activity is covered when all of the following hold: (1) it originates from the approved initial ingress source, or it is executed on an approved target, or it is an approved lateral-movement method executed from one approved target to another approved target; (2) it uses an approved method; (3) it affects only approved targets; (4) any transfer of protected data goes only to the approved exfiltration-simulation sink. Covered activity must not be escalated solely because it resembles attack activity, and it does not by itself end the authorization. Required action: MONITOR."
+        },
+        {
+          "id": "PT-03",
+          "text": "Stop condition: if telemetry permitted under PT-04 shows protected data transferred to any destination other than the approved exfiltration-simulation sink, the penetration-test authorization terminates immediately at that event and all later engagement activity is not covered. Required action: OPEN_INCIDENT."
+        },
+        {
+          "id": "PT-04",
+          "text": "Only DLP and network-sensor telemetry (source: dlp with source_class: DLP_TELEMETRY, or source: netflow with source_class: NETWORK_TELEMETRY) may establish whether a stop condition has occurred. Other telemetry and tester statements cannot establish or rule out a stop condition."
+        },
+        {
+          "id": "PT-05",
+          "text": "A penetration-test authorization is ACTIVE from its window start while event_time < window end. Except where PT-03 applies, engagement activity that is not covered under PT-02, or that occurs after the authorization has expired or been revoked, must be escalated for Tier-2 investigation. Required action: ESCALATE_TIER2."
+        }
+      ]
+    },
+    "alert": {
+      "source": "siem",
+      "rule_name": "Protected data transferred to external host during engagement",
+      "timestamp": "2026-10-30T12:58:09Z",
+      "related_event_id": "E77"
+    },
+    "asset_context": {
+      "hostname": "stg-files-02.stg.corp.example",
+      "environment": "staging",
+      "criticality": "medium"
+    },
+    "timeline": [
+      {
+        "event_id": "E1",
+        "timestamp": "2026-10-30T06:42:52Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-42279 comment by svc-print: closed as duplicate."
+      },
+      {
+        "event_id": "E2",
+        "timestamp": "2026-10-30T06:43:57Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-45204 comment by jdoe: user password reset completed."
+      },
+      {
+        "event_id": "E3",
+        "timestamp": "2026-10-30T06:47:06Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel executed msiexec.exe /i agent_update.msi /qn on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E4",
+        "timestamp": "2026-10-30T06:48:00Z",
+        "source": "engagement_register",
+        "source_class": "ENGAGEMENT_RECORD",
+        "event": "Rules of engagement PT-2026-051 APPROVED. Approved initial ingress source: 198.51.100.40 (tester jump host). Approved targets: all hosts under stg.corp.example. Approved methods: password spraying against approved targets; PsExec lateral movement between approved targets (the only method approved for lateral movement); LSASS credential dumping on approved targets; exfiltration simulation of protected test data to the approved sink 203.0.113.60 (sink2.pentest.example.net) only. Window 07:00 to 15:00 UTC on 30 Oct.",
+        "details": {
+          "engagement_id": "PT-2026-051",
+          "status": "APPROVED",
+          "approved_ingress_source": "198.51.100.40",
+          "approved_target_suffix": ".stg.corp.example",
+          "approved_methods": "password_spraying,psexec_lateral_movement,lsass_credential_dumping,exfiltration_simulation",
+          "lateral_methods": "psexec_lateral_movement",
+          "approved_sinks": "203.0.113.60",
+          "valid_from": "2026-10-30T07:00:00Z",
+          "valid_until": "2026-10-30T15:00:00Z"
+        }
+      },
+      {
+        "event_id": "E5",
+        "timestamp": "2026-10-30T06:52:49Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-build executed certutil.exe -verifyctl on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E6",
+        "timestamp": "2026-10-30T07:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E7",
+        "timestamp": "2026-10-30T07:02:30Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-mail executed rundll32.exe printui.dll,PrintUIEntry on dlp-gw-01.corp.example."
+      },
+      {
+        "event_id": "E8",
+        "timestamp": "2026-10-30T07:07:34Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-41970 comment by svc-monitor: awaiting vendor reply."
+      },
+      {
+        "event_id": "E9",
+        "timestamp": "2026-10-30T07:10:07Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-print launched bash /opt/scripts/backup_check.sh on dlp-gw-01.corp.example."
+      },
+      {
+        "event_id": "E10",
+        "timestamp": "2026-10-30T07:14:22Z",
+        "source": "netflow",
+        "source_class": "NETWORK_TELEMETRY",
+        "event": "412 failed Kerberos pre-authentication attempts across 160 accounts from 198.51.100.40 against stg-dc-01.stg.corp.example in 6 minutes.",
+        "details": {
+          "src_ip": "198.51.100.40",
+          "dst_host": "stg-dc-01.stg.corp.example",
+          "technique": "password_spraying"
+        }
+      },
+      {
+        "event_id": "E11",
+        "timestamp": "2026-10-30T07:15:25Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E12",
+        "timestamp": "2026-10-30T07:17:39Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-mail executed certutil.exe -verifyctl on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E13",
+        "timestamp": "2026-10-30T07:21:07Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-build launched bash /opt/scripts/backup_check.sh on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E14",
+        "timestamp": "2026-10-30T07:25:26Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-monitor executed certutil.exe -verifyctl on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E15",
+        "timestamp": "2026-10-30T07:25:36Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe launched bash /opt/scripts/backup_check.sh on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E16",
+        "timestamp": "2026-10-30T07:27:17Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from jdoe: anyone seeing slow VPN logins?"
+      },
+      {
+        "event_id": "E17",
+        "timestamp": "2026-10-30T07:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E18",
+        "timestamp": "2026-10-30T07:36:21Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E19",
+        "timestamp": "2026-10-30T07:52:10Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "Account pt_red2 used PsExec from stg-jump-01.stg.corp.example to start a service on stg-files-02.stg.corp.example.",
+        "details": {
+          "src_host": "stg-jump-01.stg.corp.example",
+          "dst_host": "stg-files-02.stg.corp.example",
+          "account": "pt_red2",
+          "technique": "psexec_lateral_movement"
+        }
+      },
+      {
+        "event_id": "E20",
+        "timestamp": "2026-10-30T07:52:12Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "mchen executed msiexec.exe /i agent_update.msi /qn on build-agent-14.corp.example."
+      },
+      {
+        "event_id": "E21",
+        "timestamp": "2026-10-30T07:55:59Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from svc-monitor: anyone seeing slow VPN logins?"
+      },
+      {
+        "event_id": "E22",
+        "timestamp": "2026-10-30T08:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E23",
+        "timestamp": "2026-10-30T08:11:59Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-mail executed certutil.exe -verifyctl on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E24",
+        "timestamp": "2026-10-30T08:12:31Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from svc-print: printer on floor 3 is back."
+      },
+      {
+        "event_id": "E25",
+        "timestamp": "2026-10-30T08:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E26",
+        "timestamp": "2026-10-30T08:33:41Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "Process procdump64.exe running as pt_red2 read lsass.exe memory on stg-files-02.stg.corp.example.",
+        "details": {
+          "host": "stg-files-02.stg.corp.example",
+          "account": "pt_red2",
+          "technique": "lsass_credential_dumping"
+        }
+      },
+      {
+        "event_id": "E27",
+        "timestamp": "2026-10-30T08:33:55Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #soc from svc-build: shift handover notes posted."
+      },
+      {
+        "event_id": "E28",
+        "timestamp": "2026-10-30T08:34:37Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-build launched cmd.exe /c whoami /groups on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E29",
+        "timestamp": "2026-10-30T08:40:46Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe executed certutil.exe -verifyctl on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E30",
+        "timestamp": "2026-10-30T08:57:12Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: CPU at 55 percent on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E31",
+        "timestamp": "2026-10-30T08:58:18Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-40947 comment by jdoe: closed as duplicate."
+      },
+      {
+        "event_id": "E32",
+        "timestamp": "2026-10-30T09:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E33",
+        "timestamp": "2026-10-30T09:00:07Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from svc-build: patch Tuesday prep starts tomorrow."
+      },
+      {
+        "event_id": "E34",
+        "timestamp": "2026-10-30T09:11:11Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on build-agent-14.corp.example."
+      },
+      {
+        "event_id": "E35",
+        "timestamp": "2026-10-30T09:15:39Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-monitor ran sc.exe query wuauserv on dlp-gw-01.corp.example."
+      },
+      {
+        "event_id": "E36",
+        "timestamp": "2026-10-30T09:21:05Z",
+        "source": "netflow",
+        "source_class": "NETWORK_TELEMETRY",
+        "event": "Protected file payroll_synthetic_q3.csv (12 MB) transferred over HTTPS from stg-files-02.stg.corp.example to 203.0.113.60 (sink2.pentest.example.net).",
+        "details": {
+          "src_host": "stg-files-02.stg.corp.example",
+          "destination_ip": "203.0.113.60",
+          "destination_host": "sink2.pentest.example.net",
+          "data_classification": "PROTECTED",
+          "technique": "exfiltration_simulation"
+        }
+      },
+      {
+        "event_id": "E37",
+        "timestamp": "2026-10-30T09:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E38",
+        "timestamp": "2026-10-30T09:37:20Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-48478 comment by svc-monitor: user password reset completed."
+      },
+      {
+        "event_id": "E39",
+        "timestamp": "2026-10-30T09:40:17Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message from tester pt_red2 in #pentest-coord: sink2 is getting slow, might move the next batch to the backup sink 203.0.113.66."
+      },
+      {
+        "event_id": "E40",
+        "timestamp": "2026-10-30T09:44:46Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: CPU at 68 percent on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E41",
+        "timestamp": "2026-10-30T09:49:07Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from jdoe: patch Tuesday prep starts tomorrow."
+      },
+      {
+        "event_id": "E42",
+        "timestamp": "2026-10-30T09:50:28Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from svc-mail: printer on floor 3 is back."
+      },
+      {
+        "event_id": "E43",
+        "timestamp": "2026-10-30T09:55:00Z",
+        "source": "engagement_register",
+        "source_class": "ENGAGEMENT_RECORD",
+        "event": "Engagement register status note for PT-2026-051: exfiltration simulation phase in progress."
+      },
+      {
+        "event_id": "E44",
+        "timestamp": "2026-10-30T10:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E45",
+        "timestamp": "2026-10-30T10:09:31Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from svc-monitor: printer on floor 3 is back."
+      },
+      {
+        "event_id": "E46",
+        "timestamp": "2026-10-30T10:17:57Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: TLS certificate on hr-portal-01.corp.example expires in 79 days."
+      },
+      {
+        "event_id": "E47",
+        "timestamp": "2026-10-30T10:29:20Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on dlp-gw-01.corp.example."
+      },
+      {
+        "event_id": "E48",
+        "timestamp": "2026-10-30T10:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E49",
+        "timestamp": "2026-10-30T10:36:47Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel executed rundll32.exe printui.dll,PrintUIEntry on vpn-gw-01.corp.example."
+      },
+      {
+        "event_id": "E50",
+        "timestamp": "2026-10-30T10:39:55Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel ran schtasks.exe /query /fo LIST on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E51",
+        "timestamp": "2026-10-30T10:45:17Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on wiki-01.corp.example."
+      },
+      {
+        "event_id": "E52",
+        "timestamp": "2026-10-30T10:47:38Z",
+        "source": "netflow",
+        "source_class": "NETWORK_TELEMETRY",
+        "event": "Protected file contracts_synthetic.zip (48 MB) transferred over HTTPS from stg-files-02.stg.corp.example to 203.0.113.60 (sink2.pentest.example.net).",
+        "details": {
+          "src_host": "stg-files-02.stg.corp.example",
+          "destination_ip": "203.0.113.60",
+          "destination_host": "sink2.pentest.example.net",
+          "data_classification": "PROTECTED",
+          "technique": "exfiltration_simulation"
+        }
+      },
+      {
+        "event_id": "E53",
+        "timestamp": "2026-10-30T10:50:28Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "akowalski launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E54",
+        "timestamp": "2026-10-30T10:52:51Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on crm-app-03.corp.example."
+      },
+      {
+        "event_id": "E55",
+        "timestamp": "2026-10-30T11:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E56",
+        "timestamp": "2026-10-30T11:02:44Z",
+        "source": "dlp",
+        "source_class": "DLP_TELEMETRY",
+        "event": "DLP: internal file share sync of marketing_assets.zip (unclassified) from crm-app-03.corp.example to the corporate file share."
+      },
+      {
+        "event_id": "E57",
+        "timestamp": "2026-10-30T11:07:43Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket REQ-43991 comment by svc-build: access request approved by manager."
+      },
+      {
+        "event_id": "E58",
+        "timestamp": "2026-10-30T11:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E59",
+        "timestamp": "2026-10-30T11:33:35Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-43148 comment by jdoe: closed as duplicate."
+      },
+      {
+        "event_id": "E60",
+        "timestamp": "2026-10-30T11:53:43Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from mchen: anyone seeing slow VPN logins?"
+      },
+      {
+        "event_id": "E61",
+        "timestamp": "2026-10-30T11:54:10Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-42649 comment by svc-print: awaiting vendor reply."
+      },
+      {
+        "event_id": "E62",
+        "timestamp": "2026-10-30T11:56:02Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "mchen launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on vpn-gw-01.corp.example."
+      },
+      {
+        "event_id": "E63",
+        "timestamp": "2026-10-30T11:59:01Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-print launched cmd.exe /c whoami /groups on vpn-gw-01.corp.example."
+      },
+      {
+        "event_id": "E64",
+        "timestamp": "2026-10-30T12:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E65",
+        "timestamp": "2026-10-30T12:06:11Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-40793 comment by mchen: user password reset completed."
+      },
+      {
+        "event_id": "E66",
+        "timestamp": "2026-10-30T12:11:15Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-build launched bash /opt/scripts/backup_check.sh on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E67",
+        "timestamp": "2026-10-30T12:13:45Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: TLS certificate on print-srv-02.corp.example expires in 34 days."
+      },
+      {
+        "event_id": "E68",
+        "timestamp": "2026-10-30T12:19:56Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: disk usage 95 percent on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E69",
+        "timestamp": "2026-10-30T12:22:10Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E70",
+        "timestamp": "2026-10-30T12:28:49Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #soc from svc-mail: tuning the noisy certutil rule, ignore those for now."
+      },
+      {
+        "event_id": "E71",
+        "timestamp": "2026-10-30T12:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 30 minutes): all log sources current."
+      },
+      {
+        "event_id": "E72",
+        "timestamp": "2026-10-30T12:31:03Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on crm-app-03.corp.example."
+      },
+      {
+        "event_id": "E73",
+        "timestamp": "2026-10-30T12:32:25Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-47659 comment by jdoe: user password reset completed."
+      },
+      {
+        "event_id": "E74",
+        "timestamp": "2026-10-30T12:33:48Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "mchen ran schtasks.exe /query /fo LIST on wiki-01.corp.example."
+      },
+      {
+        "event_id": "E75",
+        "timestamp": "2026-10-30T12:35:34Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-monitor executed certutil.exe -verifyctl on wiki-01.corp.example."
+      },
+      {
+        "event_id": "E76",
+        "timestamp": "2026-10-30T12:48:13Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe executed rundll32.exe printui.dll,PrintUIEntry on wiki-01.corp.example."
+      },
+      {
+        "event_id": "E77",
+        "timestamp": "2026-10-30T12:58:09Z",
+        "source": "netflow",
+        "source_class": "NETWORK_TELEMETRY",
+        "event": "Protected file hr_reviews_synthetic.xlsx (27 MB) transferred over HTTPS from stg-files-02.stg.corp.example to 203.0.113.66 (sink2-backup.pentest.example.net).",
+        "details": {
+          "src_host": "stg-files-02.stg.corp.example",
+          "destination_ip": "203.0.113.66",
+          "destination_host": "sink2-backup.pentest.example.net",
+          "data_classification": "PROTECTED",
+          "technique": "exfiltration_simulation"
+        }
+      }
+    ]
+  },
+  "hidden_reference": {
+    "exception_status": "TERMINATED",
+    "transition_event_id": "E77",
+    "governing_rule_id": "PT-03",
+    "primary_action": "OPEN_INCIDENT",
+    "required_evidence_ids": [
+      "E4",
+      "E77"
+    ]
+  },
+  "oracle_spec": {
+    "exception_id": "PT-2026-051",
+    "scope_model": "PENTEST",
+    "authority": [
+      {
+        "capability": "CREATE",
+        "source": "engagement_register",
+        "source_class": "ENGAGEMENT_RECORD"
+      },
+      {
+        "capability": "EXTEND",
+        "source": "engagement_register",
+        "source_class": "ENGAGEMENT_RECORD"
+      },
+      {
+        "capability": "REVOKE",
+        "source": "engagement_register",
+        "source_class": "ENGAGEMENT_RECORD"
+      },
+      {
+        "capability": "ESTABLISH_STOP_CONDITION",
+        "source": "dlp",
+        "source_class": "DLP_TELEMETRY"
+      },
+      {
+        "capability": "ESTABLISH_STOP_CONDITION",
+        "source": "netflow",
+        "source_class": "NETWORK_TELEMETRY"
+      }
+    ],
+    "rule_map": {
+      "covered": {
+        "rule_id": "PT-02",
+        "action": "MONITOR"
+      },
+      "expired": {
+        "rule_id": "PT-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "revoked": {
+        "rule_id": "PT-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "stop_condition": {
+        "rule_id": "PT-03",
+        "action": "OPEN_INCIDENT"
+      },
+      "out_of_scope": {
+        "rule_id": "PT-05",
+        "action": "ESCALATE_TIER2"
+      }
+    },
+    "event_semantics": [
+      {
+        "event_id": "E4",
+        "kind": "AUTHORIZATION_CREATE"
+      },
+      {
+        "event_id": "E6",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E10",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E17",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E19",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E22",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E25",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E26",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E32",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E36",
+        "kind": "DATA_TRANSFER"
+      },
+      {
+        "event_id": "E37",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E44",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E48",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E52",
+        "kind": "DATA_TRANSFER"
+      },
+      {
+        "event_id": "E55",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E58",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E64",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E71",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E77",
+        "kind": "DATA_TRANSFER"
+      }
+    ],
+    "evaluated_event_id": "E77",
+    "probes": [
+      "LOOKALIKE_DESTINATION",
+      "STOP_CONDITION"
+    ]
+  },
+  "internal_metadata": {
+    "pair_id": "DEV-PAIR-009",
+    "variant": "B",
+    "synthetic": true,
+    "human_review_status": "PENDING"
+  }
+}

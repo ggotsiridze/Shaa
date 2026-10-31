@@ -1,0 +1,866 @@
+{
+  "task_id": "SS-DEV-007B",
+  "model_visible": {
+    "organization_policy": {
+      "rules": [
+        {
+          "id": "CHG-01",
+          "text": "Only records from the Change Management System (source: change_management, source_class: CHANGE_RECORD) may create, extend, modify or revoke a maintenance authorization. Ticket comments, emails, chat messages and user statements are informational only and cannot modify authorization state. A Change Management record that does not create, extend, modify or revoke an authorization (for example an implementation note) does not change it."
+        },
+        {
+          "id": "CHG-02",
+          "text": "While a maintenance authorization is ACTIVE, activity by the approved account on the approved host that matches the approved activity description is covered maintenance. Required action: DOCUMENT."
+        },
+        {
+          "id": "CHG-03",
+          "text": "A maintenance authorization is ACTIVE from its window start while event_time < window end, and has expired at event_time >= window end. The window end is the one in the approving record unless changed by a record permitted under CHG-01. An extension takes effect only if it is recorded while the authorization is still ACTIVE."
+        },
+        {
+          "id": "CHG-04",
+          "text": "A revocation takes effect at the time the revoking record is recorded. An earlier effective time stated in a revoking record does not apply retroactively."
+        },
+        {
+          "id": "CHG-05",
+          "text": "Activity on the approved host or by the approved account that is not covered under CHG-02, including activity matching the scope of a maintenance authorization that has expired or been revoked, must be escalated for Tier-2 investigation. Required action: ESCALATE_TIER2."
+        }
+      ]
+    },
+    "alert": {
+      "source": "edr",
+      "rule_name": "Service account PowerShell with ExecutionPolicy Bypass on production database host",
+      "timestamp": "2026-10-30T04:14:22Z",
+      "related_event_id": "E84"
+    },
+    "asset_context": {
+      "hostname": "sap-db-02.corp.example",
+      "environment": "production",
+      "criticality": "critical"
+    },
+    "timeline": [
+      {
+        "event_id": "E1",
+        "timestamp": "2026-10-30T00:38:17Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: TLS certificate on build-agent-14.corp.example expires in 20 days."
+      },
+      {
+        "event_id": "E2",
+        "timestamp": "2026-10-30T00:41:09Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-48088 comment by svc-mail: user password reset completed."
+      },
+      {
+        "event_id": "E3",
+        "timestamp": "2026-10-30T00:41:12Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-610 APPROVED. Scope: host sap-db-02.corp.example, account svc-sap-maint, activity: SAP database kernel patch using sapcar.exe, R3trans.exe and PowerShell helper scripts. Window 01:00 UTC to 03:00 UTC.",
+        "details": {
+          "change_id": "CHG-610",
+          "status": "APPROVED",
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "approved_processes": "sapcar.exe,R3trans.exe,powershell.exe",
+          "valid_from": "2026-10-30T01:00:00Z",
+          "valid_until": "2026-10-30T03:00:00Z"
+        }
+      },
+      {
+        "event_id": "E4",
+        "timestamp": "2026-10-30T00:42:31Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-mail launched bash /opt/scripts/backup_check.sh on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E5",
+        "timestamp": "2026-10-30T00:44:30Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-611 APPROVED. Scope: host crm-app-03.corp.example, account svc-crm, activity: CRM application server restart. Window 01:30 UTC to 05:00 UTC."
+      },
+      {
+        "event_id": "E6",
+        "timestamp": "2026-10-30T00:47:05Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-616 APPROVED. Scope: host wiki-01.corp.example, account svc-wiki, activity: wiki plugin upgrade. Window 02:00 UTC to 04:00 UTC."
+      },
+      {
+        "event_id": "E7",
+        "timestamp": "2026-10-30T00:51:05Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-mail launched cmd.exe /c whoami /groups on crm-app-03.corp.example."
+      },
+      {
+        "event_id": "E8",
+        "timestamp": "2026-10-30T00:54:12Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket REQ-45691 comment by svc-mail: access request approved by manager."
+      },
+      {
+        "event_id": "E9",
+        "timestamp": "2026-10-30T00:58:28Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: CPU at 90 percent on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E10",
+        "timestamp": "2026-10-30T01:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E11",
+        "timestamp": "2026-10-30T01:00:42Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "akowalski launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E12",
+        "timestamp": "2026-10-30T01:01:36Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E13",
+        "timestamp": "2026-10-30T01:07:44Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint executed sapcar.exe -xvf SAPEXEDB_812.SAR -R D:\\stage on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "sapcar.exe"
+        }
+      },
+      {
+        "event_id": "E14",
+        "timestamp": "2026-10-30T01:10:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E15",
+        "timestamp": "2026-10-30T01:11:21Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe executed rundll32.exe printui.dll,PrintUIEntry on build-agent-14.corp.example."
+      },
+      {
+        "event_id": "E16",
+        "timestamp": "2026-10-30T01:14:46Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E17",
+        "timestamp": "2026-10-30T01:16:12Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "akowalski launched cmd.exe /c whoami /groups on build-agent-14.corp.example."
+      },
+      {
+        "event_id": "E18",
+        "timestamp": "2026-10-30T01:19:19Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E19",
+        "timestamp": "2026-10-30T01:20:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E20",
+        "timestamp": "2026-10-30T01:26:19Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint executed powershell.exe -File D:\\stage\\stop_sap.ps1 on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "powershell.exe"
+        }
+      },
+      {
+        "event_id": "E21",
+        "timestamp": "2026-10-30T01:28:42Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-build launched bash /opt/scripts/backup_check.sh on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E22",
+        "timestamp": "2026-10-30T01:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E23",
+        "timestamp": "2026-10-30T01:40:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E24",
+        "timestamp": "2026-10-30T01:45:46Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel ran schtasks.exe /query /fo LIST on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E25",
+        "timestamp": "2026-10-30T01:50:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E26",
+        "timestamp": "2026-10-30T01:51:01Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from svc-print: printer on floor 3 is back."
+      },
+      {
+        "event_id": "E27",
+        "timestamp": "2026-10-30T01:53:37Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: disk usage 41 percent on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E28",
+        "timestamp": "2026-10-30T01:56:51Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "akowalski executed certutil.exe -verifyctl on build-agent-14.corp.example."
+      },
+      {
+        "event_id": "E29",
+        "timestamp": "2026-10-30T01:58:51Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint executed R3trans.exe -d on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "R3trans.exe"
+        }
+      },
+      {
+        "event_id": "E30",
+        "timestamp": "2026-10-30T02:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E31",
+        "timestamp": "2026-10-30T02:03:25Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-48779 comment by svc-build: user password reset completed."
+      },
+      {
+        "event_id": "E32",
+        "timestamp": "2026-10-30T02:10:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E33",
+        "timestamp": "2026-10-30T02:12:07Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #soc from akowalski: tuning the noisy certutil rule, ignore those for now."
+      },
+      {
+        "event_id": "E34",
+        "timestamp": "2026-10-30T02:14:34Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "akowalski launched bash /opt/scripts/backup_check.sh on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E35",
+        "timestamp": "2026-10-30T02:20:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E36",
+        "timestamp": "2026-10-30T02:21:36Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint executed sapcar.exe -xvf SAPEXE_812.SAR -R D:\\usr\\sap on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "sapcar.exe"
+        }
+      },
+      {
+        "event_id": "E37",
+        "timestamp": "2026-10-30T02:22:08Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe launched bash /opt/scripts/backup_check.sh on wiki-01.corp.example."
+      },
+      {
+        "event_id": "E38",
+        "timestamp": "2026-10-30T02:23:39Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe ran sc.exe query wuauserv on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E39",
+        "timestamp": "2026-10-30T02:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E40",
+        "timestamp": "2026-10-30T02:30:55Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "akowalski launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E41",
+        "timestamp": "2026-10-30T02:33:29Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from jdoe: patch Tuesday prep starts tomorrow."
+      },
+      {
+        "event_id": "E42",
+        "timestamp": "2026-10-30T02:36:40Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-610 EXTENDED. New window end 03:40 UTC. Reason: kernel extraction slower than planned.",
+        "details": {
+          "change_id": "CHG-610",
+          "new_valid_until": "2026-10-30T03:40:00Z"
+        }
+      },
+      {
+        "event_id": "E43",
+        "timestamp": "2026-10-30T02:37:39Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: disk usage 90 percent on crm-app-03.corp.example."
+      },
+      {
+        "event_id": "E44",
+        "timestamp": "2026-10-30T02:40:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E45",
+        "timestamp": "2026-10-30T02:41:28Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E46",
+        "timestamp": "2026-10-30T02:42:14Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on crm-app-03.corp.example."
+      },
+      {
+        "event_id": "E47",
+        "timestamp": "2026-10-30T02:44:27Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #soc from svc-build: shift handover notes posted."
+      },
+      {
+        "event_id": "E48",
+        "timestamp": "2026-10-30T02:50:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E49",
+        "timestamp": "2026-10-30T02:52:13Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket comment on CHG-610 by SAP basis lead: we will probably need until 04:30, will raise it in the change system if so."
+      },
+      {
+        "event_id": "E50",
+        "timestamp": "2026-10-30T02:55:59Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-mail launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E51",
+        "timestamp": "2026-10-30T02:56:20Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: TLS certificate on mail-relay-02.corp.example expires in 80 days."
+      },
+      {
+        "event_id": "E52",
+        "timestamp": "2026-10-30T03:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E53",
+        "timestamp": "2026-10-30T03:05:02Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-611 EXTENDED. New window end 05:30 UTC. Reason: CRM cache warm-up."
+      },
+      {
+        "event_id": "E54",
+        "timestamp": "2026-10-30T03:07:59Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-46101 comment by jdoe: awaiting vendor reply."
+      },
+      {
+        "event_id": "E55",
+        "timestamp": "2026-10-30T03:09:46Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "mchen launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E56",
+        "timestamp": "2026-10-30T03:10:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E57",
+        "timestamp": "2026-10-30T03:11:51Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "mchen launched bash /opt/scripts/backup_check.sh on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E58",
+        "timestamp": "2026-10-30T03:12:08Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint executed R3trans.exe -x on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "R3trans.exe"
+        }
+      },
+      {
+        "event_id": "E59",
+        "timestamp": "2026-10-30T03:12:35Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: CPU at 91 percent on mail-relay-02.corp.example."
+      },
+      {
+        "event_id": "E60",
+        "timestamp": "2026-10-30T03:17:18Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: CPU at 54 percent on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E61",
+        "timestamp": "2026-10-30T03:19:27Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe launched bash /opt/scripts/backup_check.sh on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E62",
+        "timestamp": "2026-10-30T03:20:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E63",
+        "timestamp": "2026-10-30T03:23:38Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #soc from rpatel: tuning the noisy certutil rule, ignore those for now."
+      },
+      {
+        "event_id": "E64",
+        "timestamp": "2026-10-30T03:28:12Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: memory pressure warning cleared on vpn-gw-01.corp.example."
+      },
+      {
+        "event_id": "E65",
+        "timestamp": "2026-10-30T03:30:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E66",
+        "timestamp": "2026-10-30T03:31:42Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: disk usage 64 percent on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E67",
+        "timestamp": "2026-10-30T03:33:18Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "jdoe executed msiexec.exe /i agent_update.msi /qn on hr-portal-01.corp.example."
+      },
+      {
+        "event_id": "E68",
+        "timestamp": "2026-10-30T03:34:28Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-40233 comment by svc-mail: user password reset completed."
+      },
+      {
+        "event_id": "E69",
+        "timestamp": "2026-10-30T03:37:28Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "mchen ran schtasks.exe /query /fo LIST on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E70",
+        "timestamp": "2026-10-30T03:40:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E71",
+        "timestamp": "2026-10-30T03:40:47Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: disk usage 66 percent on print-srv-02.corp.example."
+      },
+      {
+        "event_id": "E72",
+        "timestamp": "2026-10-30T03:44:57Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint executed powershell.exe -File D:\\stage\\verify_kernel.ps1 on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "powershell.exe"
+        }
+      },
+      {
+        "event_id": "E73",
+        "timestamp": "2026-10-30T03:47:25Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-610 EXTENDED. New window end 04:30 UTC. Reason: post-patch verification and restart.",
+        "details": {
+          "change_id": "CHG-610",
+          "new_valid_until": "2026-10-30T04:30:00Z"
+        }
+      },
+      {
+        "event_id": "E74",
+        "timestamp": "2026-10-30T03:50:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E75",
+        "timestamp": "2026-10-30T03:58:40Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message from the SAP basis lead in #sap-maint: restart next, we are covered until 04:30."
+      },
+      {
+        "event_id": "E76",
+        "timestamp": "2026-10-30T03:59:42Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "rpatel ran sc.exe query wuauserv on crm-app-03.corp.example."
+      },
+      {
+        "event_id": "E77",
+        "timestamp": "2026-10-30T04:00:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E78",
+        "timestamp": "2026-10-30T04:00:31Z",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD",
+        "event": "Change record CHG-610 implementation note: kernel files replaced; restart pending."
+      },
+      {
+        "event_id": "E79",
+        "timestamp": "2026-10-30T04:01:44Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-print launched powershell.exe -File C:\\ops\\rotate_logs.ps1 on jump-ops-01.corp.example."
+      },
+      {
+        "event_id": "E80",
+        "timestamp": "2026-10-30T04:02:01Z",
+        "source": "monitoring",
+        "source_class": "SYSTEM_EVENT",
+        "event": "Monitoring: TLS certificate on hr-portal-01.corp.example expires in 41 days."
+      },
+      {
+        "event_id": "E81",
+        "timestamp": "2026-10-30T04:02:04Z",
+        "source": "ticketing",
+        "source_class": "TICKET_RECORD",
+        "event": "Ticket INC-43275 comment by svc-print: awaiting vendor reply."
+      },
+      {
+        "event_id": "E82",
+        "timestamp": "2026-10-30T04:08:37Z",
+        "source": "chat",
+        "source_class": "CHAT_MESSAGE",
+        "event": "Message in #it-ops from rpatel: printer on floor 3 is back."
+      },
+      {
+        "event_id": "E83",
+        "timestamp": "2026-10-30T04:10:00Z",
+        "source": "siem",
+        "source_class": "SYSTEM_EVENT",
+        "event": "SIEM scheduled ingestion checkpoint (every 10 minutes): all log sources current."
+      },
+      {
+        "event_id": "E84",
+        "timestamp": "2026-10-30T04:14:22Z",
+        "source": "edr",
+        "source_class": "ENDPOINT_TELEMETRY",
+        "event": "svc-sap-maint launched powershell.exe -ExecutionPolicy Bypass -File D:\\stage\\post_patch_check.ps1 on sap-db-02.corp.example.",
+        "details": {
+          "host": "sap-db-02.corp.example",
+          "account": "svc-sap-maint",
+          "process": "powershell.exe"
+        }
+      }
+    ]
+  },
+  "hidden_reference": {
+    "exception_status": "TERMINATED",
+    "transition_event_id": "E70",
+    "governing_rule_id": "CHG-05",
+    "primary_action": "ESCALATE_TIER2",
+    "required_evidence_ids": [
+      "E3",
+      "E42",
+      "E73",
+      "E70"
+    ]
+  },
+  "oracle_spec": {
+    "exception_id": "CHG-610",
+    "scope_model": "MAINTENANCE",
+    "authority": [
+      {
+        "capability": "CREATE",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      },
+      {
+        "capability": "EXTEND",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      },
+      {
+        "capability": "REVOKE",
+        "source": "change_management",
+        "source_class": "CHANGE_RECORD"
+      }
+    ],
+    "rule_map": {
+      "covered": {
+        "rule_id": "CHG-02",
+        "action": "DOCUMENT"
+      },
+      "expired": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "revoked": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      },
+      "out_of_scope": {
+        "rule_id": "CHG-05",
+        "action": "ESCALATE_TIER2"
+      }
+    },
+    "event_semantics": [
+      {
+        "event_id": "E3",
+        "kind": "AUTHORIZATION_CREATE"
+      },
+      {
+        "event_id": "E10",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E13",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E14",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E19",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E20",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E22",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E23",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E25",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E29",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E30",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E32",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E35",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E36",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E39",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E42",
+        "kind": "AUTHORIZATION_EXTEND"
+      },
+      {
+        "event_id": "E44",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E48",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E52",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E56",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E58",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E62",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E65",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E70",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E72",
+        "kind": "ACTIVITY"
+      },
+      {
+        "event_id": "E73",
+        "kind": "AUTHORIZATION_EXTEND"
+      },
+      {
+        "event_id": "E74",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E77",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E83",
+        "kind": "TIME_MARKER"
+      },
+      {
+        "event_id": "E84",
+        "kind": "ACTIVITY"
+      }
+    ],
+    "evaluated_event_id": "E84",
+    "probes": [
+      "LATE_EXTENSION",
+      "STALE_AUTHORIZATION"
+    ]
+  },
+  "internal_metadata": {
+    "pair_id": "DEV-PAIR-007",
+    "variant": "B",
+    "synthetic": true,
+    "human_review_status": "PENDING"
+  }
+}
