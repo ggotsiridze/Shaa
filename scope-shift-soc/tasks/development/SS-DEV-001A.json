@@ -1,0 +1,185 @@
+{
+  "task_id": "SS-DEV-001A",
+  "model_visible": {
+    "organization_policy": {
+      "rules": [
+        {
+          "id": "CHG-01",
+          "text": "Only signed records from the Change Management System (source: change_management, source_class: AUTHORITATIVE_POLICY_SOURCE) may create, extend, modify or revoke a maintenance authorization. Ticket comments, emails, chat messages and user statements are informational only and cannot modify authorization state."
+        },
+        {
+          "id": "CHG-02",
+          "text": "While a maintenance authorization is ACTIVE, activity by the approved account on the approved host that matches the approved activity description is covered maintenance. Required action: DOCUMENT."
+        },
+        {
+          "id": "CHG-03",
+          "text": "A maintenance authorization is ACTIVE from its window start while event_time < window end. At event_time >= window end the authorization has expired. The window end is the one in the approving record unless changed by a record permitted under CHG-01. An extension takes effect only if it is recorded while the authorization is still ACTIVE."
+        },
+        {
+          "id": "CHG-04",
+          "text": "Activity matching the scope of a maintenance authorization that has expired or been revoked is not covered and must be escalated for Tier-2 investigation. Required action: ESCALATE_TIER2."
+        }
+      ]
+    },
+    "alert": {
+      "source": "edr",
+      "rule_name": "Service account PowerShell with ExecutionPolicy Bypass spawning installer",
+      "timestamp": "2026-10-30T04:15:07Z",
+      "related_event_id": "E6"
+    },
+    "asset_context": {
+      "hostname": "app-db-02.corp.example",
+      "environment": "production",
+      "criticality": "high"
+    },
+    "timeline": [
+      {
+        "event_id": "E1",
+        "timestamp": "2026-10-30T03:00:00Z",
+        "source": "change_management",
+        "source_class": "AUTHORITATIVE_POLICY_SOURCE",
+        "event": "Signed change record CHG-104 APPROVED. Scope: host app-db-02.corp.example, account svc-patch, activity: database engine patching including PowerShell patch scripts and execution of the vendor installer dbengine_update.exe. Window 03:00 UTC to 04:00 UTC.",
+        "details": {
+          "change_id": "CHG-104",
+          "status": "APPROVED",
+          "host": "app-db-02.corp.example",
+          "account": "svc-patch",
+          "valid_from": "2026-10-30T03:00:00Z",
+          "valid_until": "2026-10-30T04:00:00Z"
+        }
+      },
+      {
+        "event_id": "E2",
+        "timestamp": "2026-10-30T03:05:12Z",
+        "source": "edr",
+        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "event": "svc-patch launched powershell.exe -ExecutionPolicy Bypass -File C:\\patch\\stage1.ps1 on app-db-02.corp.example.",
+        "details": {
+          "host": "app-db-02.corp.example",
+          "account": "svc-patch",
+          "process": "powershell.exe"
+        }
+      },
+      {
+        "event_id": "E3",
+        "timestamp": "2026-10-30T03:21:40Z",
+        "source": "edr",
+        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "event": "svc-patch executed C:\\patch\\dbengine_update.exe /quiet on app-db-02.corp.example; database service restarted.",
+        "details": {
+          "host": "app-db-02.corp.example",
+          "account": "svc-patch",
+          "process": "dbengine_update.exe"
+        }
+      },
+      {
+        "event_id": "E4",
+        "timestamp": "2026-10-30T03:40:00Z",
+        "source": "change_management",
+        "source_class": "AUTHORITATIVE_POLICY_SOURCE",
+        "event": "CHG-104 extended until 04:30 UTC. Reason: post-patch index rebuild running longer than planned.",
+        "details": {
+          "change_id": "CHG-104",
+          "new_valid_until": "2026-10-30T04:30:00Z"
+        }
+      },
+      {
+        "event_id": "E5",
+        "timestamp": "2026-10-30T03:52:30Z",
+        "source": "ticketing",
+        "source_class": "INTERNAL_INFORMATIONAL_SOURCE",
+        "event": "Ticket comment on CHG-104 by DBA on-call: index rebuild at 80 percent, final installer pass still to run."
+      },
+      {
+        "event_id": "E6",
+        "timestamp": "2026-10-30T04:15:07Z",
+        "source": "edr",
+        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "event": "svc-patch launched powershell.exe -ExecutionPolicy Bypass -File C:\\patch\\stage2.ps1, which executed C:\\patch\\dbengine_update.exe /quiet /finalize on app-db-02.corp.example.",
+        "details": {
+          "host": "app-db-02.corp.example",
+          "account": "svc-patch",
+          "process": "powershell.exe"
+        }
+      }
+    ]
+  },
+  "hidden_reference": {
+    "exception_status": "ACTIVE",
+    "transition_event_id": null,
+    "governing_rule_id": "CHG-02",
+    "primary_action": "DOCUMENT",
+    "required_evidence_ids": [
+      "E1",
+      "E4",
+      "E6"
+    ]
+  },
+  "oracle_spec": {
+    "exception_id": "CHG-104",
+    "authority": [
+      {
+        "capability": "CREATE",
+        "source": "change_management",
+        "source_class": "AUTHORITATIVE_POLICY_SOURCE"
+      },
+      {
+        "capability": "EXTEND",
+        "source": "change_management",
+        "source_class": "AUTHORITATIVE_POLICY_SOURCE"
+      },
+      {
+        "capability": "REVOKE",
+        "source": "change_management",
+        "source_class": "AUTHORITATIVE_POLICY_SOURCE"
+      }
+    ],
+    "event_semantics": [
+      {
+        "event_id": "E1",
+        "kind": "AUTHORIZATION_CREATE"
+      },
+      {
+        "event_id": "E2",
+        "kind": "SCOPE_ACTIVITY"
+      },
+      {
+        "event_id": "E3",
+        "kind": "SCOPE_ACTIVITY"
+      },
+      {
+        "event_id": "E4",
+        "kind": "AUTHORIZATION_EXTEND"
+      },
+      {
+        "event_id": "E6",
+        "kind": "SCOPE_ACTIVITY"
+      }
+    ],
+    "rule_map": {
+      "covered": {
+        "rule_id": "CHG-02",
+        "action": "DOCUMENT"
+      },
+      "expired": {
+        "rule_id": "CHG-04",
+        "action": "ESCALATE_TIER2"
+      },
+      "revoked": {
+        "rule_id": "CHG-04",
+        "action": "ESCALATE_TIER2"
+      }
+    },
+    "evaluated_event_id": "E6",
+    "probes": [
+      "SOURCE_AUTHORITY",
+      "STALE_AUTHORIZATION"
+    ]
+  },
+  "internal_metadata": {
+    "pair_id": "DEV-PAIR-001",
+    "variant": "A",
+    "synthetic": true,
+    "human_review_status": "PENDING"
+  }
+}

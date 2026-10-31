@@ -1,0 +1,25 @@
+{
+  "DEV-PAIR-001": {
+    "variants": {
+      "A": "SS-DEV-001A",
+      "B": "SS-DEV-001B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E4].source",
+      "timeline[E4].source_class"
+    ],
+    "purpose": "Identical extension text; only the source authority differs."
+  },
+  "DEV-PAIR-002": {
+    "variants": {
+      "A": "SS-DEV-002A",
+      "B": "SS-DEV-002B"
+    },
+    "expected_model_visible_differences": [
+      "timeline[E6].event",
+      "timeline[E6].details.destination_ip",
+      "timeline[E6].details.destination_host"
+    ],
+    "purpose": "Same engagement; only the destination of the E6 protected-data transfer differs."
+  }
+}
