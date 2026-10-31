@@ -67,13 +67,18 @@ def main(argv: list[str] | None = None) -> int:
     for r in records:
         print(f"{r.task_id:<13} {r.trial_index:>5} {r.strict_pass!s:>5} "
               f"{(r.score if r.score is not None else float('nan')):>6.2f} {r.attempt_count:>4}  {','.join(r.failure_types) or '-'}")
-    keys = ["task_pass_rate", "pair_pass_rate", f"strict_pass_at_{args.trials}", f"pair_pass_at_{args.trials}",
+    k = args.trials
+    keys = ["task_pass_rate", "pair_pass_rate", f"strict_pass_pow_{k}", f"pair_pass_pow_{k}", f"strict_pass_at_{k}_any",
             "exception_state_accuracy", "transition_event_accuracy", "governing_rule_accuracy",
-            "primary_action_accuracy", "evidence_coverage", "source_authority_accuracy",
+            "primary_action_accuracy", "evidence_coverage", "source_authority_pair_pass_rate",
+            "authority_contrast_consistency",
             "premature_termination_rate", "missed_termination_rate", "stale_authorization_rate",
             "parse_failure_rate", "infrastructure_failure_rate", "failure_type_counts"]
-    for k in keys:
-        print(f"  {k}: {metrics[k]}")
+    labels = {f"strict_pass_pow_{k}": f"strict pass^{k} (all {k} trials pass)",
+              f"pair_pass_pow_{k}": f"pair pass^{k} (both variants, all {k} trials)",
+              f"strict_pass_at_{k}_any": f"strict pass@{k} (at least one trial passes; reference only)"}
+    for key in keys:
+        print(f"  {labels.get(key, key)}: {metrics[key]}")
     print(f"results: {args.results_dir / (run_id + '.json')}")
     return 0
 

@@ -5,23 +5,23 @@
       "rules": [
         {
           "id": "PT-01",
-          "text": "Penetration-test authorizations (rules of engagement) may be created, extended, modified or revoked only by signed records from the Security Engagement Register (source: engagement_register, source_class: AUTHORITATIVE_POLICY_SOURCE). Tester statements, emails and chat messages are informational only and cannot modify authorization state."
+          "text": "Penetration-test authorizations (rules of engagement) may be created, extended, modified or revoked only by records from the Security Engagement Register (source: engagement_register, source_class: ENGAGEMENT_RECORD). Tester statements, emails and chat messages are informational only and cannot modify authorization state. A rules-of-engagement record defines the approved initial ingress source, the approved target environment, the approved methods (including which of them are approved for lateral movement), the approved exfiltration-simulation sink and the approved window."
         },
         {
           "id": "PT-02",
-          "text": "While a penetration-test authorization is ACTIVE, activity from the approved source against approved targets using approved methods inside the approved window is covered and must not be escalated solely because it resembles attack activity. Required action: MONITOR."
+          "text": "While a penetration-test authorization is ACTIVE, engagement activity is covered when all of the following hold: (1) it originates from the approved initial ingress source, or it is executed on an approved target, or it is an approved lateral-movement method executed from one approved target to another approved target; (2) it uses an approved method; (3) it affects only approved targets; (4) any transfer of protected data goes only to the approved exfiltration-simulation sink. Covered activity must not be escalated solely because it resembles attack activity, and it does not by itself end the authorization. Required action: MONITOR."
         },
         {
           "id": "PT-03",
-          "text": "Stop condition: if telemetry permitted under PT-04 shows protected data transferred to any external destination other than the approved test sink, the penetration-test authorization terminates immediately at that event and all later engagement activity is not covered. Required action: OPEN_INCIDENT."
+          "text": "Stop condition: if telemetry permitted under PT-04 shows protected data transferred to any destination other than the approved exfiltration-simulation sink, the penetration-test authorization terminates immediately at that event and all later engagement activity is not covered. Required action: OPEN_INCIDENT."
         },
         {
           "id": "PT-04",
-          "text": "Only DLP and network-sensor telemetry (source: dlp or netflow, source_class: AUTHORITATIVE_SECURITY_TELEMETRY) may establish whether a stop condition has occurred. Tester statements cannot establish or rule out a stop condition."
+          "text": "Only DLP and network-sensor telemetry (source: dlp with source_class: DLP_TELEMETRY, or source: netflow with source_class: NETWORK_TELEMETRY) may establish whether a stop condition has occurred. Tester statements cannot establish or rule out a stop condition."
         },
         {
           "id": "PT-05",
-          "text": "A penetration-test authorization is ACTIVE from its window start while event_time < window end. Engagement activity after the authorization has expired or been revoked is not covered. Required action: ESCALATE_TIER2."
+          "text": "A penetration-test authorization is ACTIVE from its window start while event_time < window end. Except where PT-03 applies, engagement activity that is not covered under PT-02, or that occurs after the authorization has expired or been revoked, must be escalated for Tier-2 investigation. Required action: ESCALATE_TIER2."
         }
       ]
     },
@@ -41,13 +41,15 @@
         "event_id": "E1",
         "timestamp": "2026-10-30T08:55:00Z",
         "source": "engagement_register",
-        "source_class": "AUTHORITATIVE_POLICY_SOURCE",
-        "event": "Signed rules of engagement PT-2026-031 APPROVED. Approved source: 198.51.100.23 (tester jump host). Approved targets: hosts under stg.corp.example. Approved methods: password spraying against stg-dc-01, SMB lateral movement with PsExec, LSASS credential dumping on in-scope hosts, exfiltration simulation of protected test data to the approved test sink 203.0.113.50 (sink.pentest.example.net) only. Window 09:00 UTC to 17:00 UTC.",
+        "source_class": "ENGAGEMENT_RECORD",
+        "event": "Rules of engagement PT-2026-031 APPROVED. Approved initial ingress source: 198.51.100.23 (tester jump host). Approved targets: all hosts under stg.corp.example. Approved methods: password spraying against approved targets; PsExec lateral movement between approved targets (the only method approved for lateral movement); LSASS credential dumping on approved targets; exfiltration simulation of protected test data to the approved sink 203.0.113.50 (sink.pentest.example.net) only. Window 09:00 UTC to 17:00 UTC.",
         "details": {
           "engagement_id": "PT-2026-031",
           "status": "APPROVED",
-          "approved_source": "198.51.100.23",
-          "approved_targets": "*.stg.corp.example",
+          "approved_ingress_source": "198.51.100.23",
+          "approved_target_suffix": ".stg.corp.example",
+          "approved_methods": "password_spraying,psexec_lateral_movement,lsass_credential_dumping,exfiltration_simulation",
+          "lateral_methods": "psexec_lateral_movement",
           "approved_sinks": "203.0.113.50",
           "valid_from": "2026-10-30T09:00:00Z",
           "valid_until": "2026-10-30T17:00:00Z"
@@ -57,30 +59,32 @@
         "event_id": "E2",
         "timestamp": "2026-10-30T09:20:31Z",
         "source": "netflow",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "source_class": "NETWORK_TELEMETRY",
         "event": "412 failed Kerberos pre-authentication attempts across 137 accounts from 198.51.100.23 against stg-dc-01.stg.corp.example in 6 minutes.",
         "details": {
           "src_ip": "198.51.100.23",
-          "dst_host": "stg-dc-01.stg.corp.example"
+          "dst_host": "stg-dc-01.stg.corp.example",
+          "technique": "password_spraying"
         }
       },
       {
         "event_id": "E3",
         "timestamp": "2026-10-30T10:05:02Z",
         "source": "edr",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "source_class": "ENDPOINT_TELEMETRY",
         "event": "Account pt_operator used PsExec from stg-web-01.stg.corp.example to start a service on stg-app-02.stg.corp.example.",
         "details": {
           "src_host": "stg-web-01.stg.corp.example",
           "dst_host": "stg-app-02.stg.corp.example",
-          "account": "pt_operator"
+          "account": "pt_operator",
+          "technique": "psexec_lateral_movement"
         }
       },
       {
         "event_id": "E4",
         "timestamp": "2026-10-30T10:40:44Z",
         "source": "dlp",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "source_class": "DLP_TELEMETRY",
         "event": "Protected file customer_records_synthetic.csv (48 MB) uploaded over HTTPS from stg-app-02.stg.corp.example to 203.0.113.50 (sink.pentest.example.net).",
         "details": {
           "src_host": "stg-app-02.stg.corp.example",
@@ -93,14 +97,14 @@
         "event_id": "E5",
         "timestamp": "2026-10-30T11:10:15Z",
         "source": "chat",
-        "source_class": "USER_STATEMENT",
+        "source_class": "CHAT_MESSAGE",
         "event": "Message from tester pt_operator in #pentest-coord: wrapping up the exfil phase, all transfers go to our sink."
       },
       {
         "event_id": "E6",
         "timestamp": "2026-10-30T11:30:09Z",
         "source": "dlp",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "source_class": "DLP_TELEMETRY",
         "event": "Protected file payroll_extract_synthetic.zip (212 MB) uploaded over HTTPS from stg-app-02.stg.corp.example to 192.0.2.77 (files.storage-share.example).",
         "details": {
           "src_host": "stg-app-02.stg.corp.example",
@@ -113,12 +117,12 @@
         "event_id": "E7",
         "timestamp": "2026-10-30T11:45:50Z",
         "source": "edr",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY",
+        "source_class": "ENDPOINT_TELEMETRY",
         "event": "Process rundll32.exe running as pt_operator opened lsass.exe with PROCESS_VM_READ on stg-app-02.stg.corp.example and wrote a memory dump to C:\\Windows\\Temp\\ls.dmp.",
         "details": {
           "host": "stg-app-02.stg.corp.example",
           "account": "pt_operator",
-          "process": "rundll32.exe"
+          "technique": "lsass_credential_dumping"
         }
       }
     ]
@@ -135,31 +139,32 @@
   },
   "oracle_spec": {
     "exception_id": "PT-2026-031",
+    "scope_model": "PENTEST",
     "authority": [
       {
         "capability": "CREATE",
         "source": "engagement_register",
-        "source_class": "AUTHORITATIVE_POLICY_SOURCE"
+        "source_class": "ENGAGEMENT_RECORD"
       },
       {
         "capability": "EXTEND",
         "source": "engagement_register",
-        "source_class": "AUTHORITATIVE_POLICY_SOURCE"
+        "source_class": "ENGAGEMENT_RECORD"
       },
       {
         "capability": "REVOKE",
         "source": "engagement_register",
-        "source_class": "AUTHORITATIVE_POLICY_SOURCE"
+        "source_class": "ENGAGEMENT_RECORD"
       },
       {
         "capability": "ESTABLISH_STOP_CONDITION",
         "source": "dlp",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY"
+        "source_class": "DLP_TELEMETRY"
       },
       {
         "capability": "ESTABLISH_STOP_CONDITION",
         "source": "netflow",
-        "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY"
+        "source_class": "NETWORK_TELEMETRY"
       }
     ],
     "event_semantics": [
@@ -169,11 +174,11 @@
       },
       {
         "event_id": "E2",
-        "kind": "SCOPE_ACTIVITY"
+        "kind": "ACTIVITY"
       },
       {
         "event_id": "E3",
-        "kind": "SCOPE_ACTIVITY"
+        "kind": "ACTIVITY"
       },
       {
         "event_id": "E4",
@@ -185,7 +190,7 @@
       },
       {
         "event_id": "E7",
-        "kind": "SCOPE_ACTIVITY"
+        "kind": "ACTIVITY"
       }
     ],
     "rule_map": {
@@ -204,6 +209,10 @@
       "stop_condition": {
         "rule_id": "PT-03",
         "action": "OPEN_INCIDENT"
+      },
+      "out_of_scope": {
+        "rule_id": "PT-05",
+        "action": "ESCALATE_TIER2"
       }
     },
     "evaluated_event_id": "E7",

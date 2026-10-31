@@ -61,8 +61,11 @@ def _wrong_action(task: Task) -> str:
 def _always_active(task: Task) -> str:
     """Tracks authorization correctly but never notices that it stopped governing."""
     covered = task.oracle_spec.rule_map.covered
-    cited = [*run_oracle(task).authorizing_event_ids, task.oracle_spec.evaluated_event_id]
-    return _answer("ACTIVE", None, covered.rule_id, covered.action.value, cited[:4])
+    res = run_oracle(task)
+    stop_check = res.last_stop_check_event_id if task.oracle_spec.rule_map.stop_condition else None
+    cited = [e for e in [*res.authorizing_event_ids, *res.rejected_claim_event_ids, stop_check,
+                         task.oracle_spec.evaluated_event_id] if e]
+    return _answer("ACTIVE", None, covered.rule_id, covered.action.value, list(dict.fromkeys(cited))[:4])
 
 
 def _terminate_at_alert(task: Task) -> str:

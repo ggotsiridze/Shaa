@@ -1,6 +1,7 @@
 # BUG_LOG
 
-Bugs found during the pilot bug hunt (10). Every entry has a regression test; all are fixed.
+BUG-001 to BUG-010: found during the original pilot bug hunt. REVIEW-011 to REVIEW-020: found by an external adversarial review.
+REVIEW-021 to REVIEW-023: found while applying those repairs. Every entry has a regression test, and all are fixed.
 
 ## BUG-001: missed-transition mock failed for the wrong reason
 - **File:** `scopeshift/providers/mock.py`
@@ -97,5 +98,98 @@ Bugs found during the pilot bug hunt (10). Every entry has a regression test; al
 - **Symptom:** In the required `mock-missed-transition` run, SS-DEV-001B was tagged `SOURCE_AUTHORITY_CONFUSION`, although that mock never looks at the ticket comment.
 - **Root cause:** The rule tagged any answer whose state matched the "accept every source" oracle. On 001B, "still ACTIVE" is also exactly what a model that ignores all transitions produces.
 - **Impact:** Inflated the source-authority failure count. That violates the requirement to classify only when the category can be reliably determined.
-- **Fix:** The tag additionally requires the answer to cite a rejected non-authoritative event (e.g. E4) as evidence. Otherwise the result is tagged only `MISSED_TERMINATION` / `STALE_AUTHORIZATION`.
+- **Fix:** The tag additionally required the answer to cite a rejected non-authoritative event (e.g. E4) as evidence. **Superseded by REVIEW-021**: once the prompt asks every model to cite rejected claims, citation no longer signals trust.
 - **Regression test:** `tests/test_regressions.py::test_bug010_authority_confusion_requires_citing_rejected_event`, `tests/test_mock_provider.py::test_mock_missed_transition`
+
+---
+
+# External review findings (v0.2 repair)
+
+## REVIEW-011 (BLOCKER): Pair 1 required a "signed" extension without exposing signature evidence
+- **File:** `tasks/development/SS-DEV-001A.json`, `SS-DEV-001B.json` (policy CHG-01), event texts
+- **Symptom:** CHG-01 allowed only "signed records" to change authorization, but no event shows a signature or its validation.
+- **Impact:** A careful analyst could reasonably reject the authoritative extension in 001A, so 001A's gold answer was not the only defensible answer.
+- **Fix:** Removed "signed" everywhere. CHG-01 now says "Only records from the Change Management System (source: change_management) may ...". No cryptographic modelling.
+- **Regression test:** `tests/test_review_repairs.py::test_change_record_no_signature_requirement`
+
+## REVIEW-012 (BLOCKER): Pentest scope wording conflicted with in-scope lateral movement
+- **File:** `SS-DEV-002A/B.json` (PT-02, E1 record, structured details), `scopeshift/oracle.py`
+- **Symptom:** PT-02 covered only activity "from the approved source". E3 (PsExec `stg-web-01 → stg-app-02`) and E7 (LSASS on `stg-app-02`) do not originate from the tester IP.
+- **Impact:** It was defensible to say coverage ended before E6, so E6 was not a unique transition.
+- **Fix:** PT-01/PT-02 now distinguish the **approved initial ingress source** from **activity on approved targets** and **approved lateral-movement methods between approved targets**. The RoE record lists PsExec as the only lateral method and LSASS dumping as an approved on-target method. PT-02 states that covered activity "does not by itself end the authorization". The oracle checks each of these from visible details.
+- **Regression test:** `tests/test_review_repairs.py::test_in_scope_lateral_movement_is_covered`, `::test_psexec_between_approved_targets_is_covered`, `::test_lsass_on_approved_target_with_approved_method_is_covered`, `::test_approved_sink_transfer_does_not_terminate`, `::test_unapproved_external_sink_is_first_termination`
+
+## REVIEW-013 (MAJOR): Time-based transition used the first post-expiry activity, not the expiry boundary
+- **File:** Pair 1 tasks, `scopeshift/oracle.py` (`check_against_reference`)
+- **Symptom:** The window ended at 04:00, but the reference transition was the 04:15 activity, because no event existed at 04:00.
+- **Impact:** The correct reasoning "it expired at 04:00; E6 is just the first later activity" would have been marked wrong.
+- **Fix:** Added an identical neutral `system_clock` / `SYSTEM_EVENT` time marker at exactly 04:00:00Z to both variants (new E6). The activity moved to E7. Task validation now fails if an expiry transition is not exactly at the window end. `SYSTEM_EVENT` can never hold authority (schema).
+- **Regression test:** `::test_expiry_occurs_at_clock_boundary_event`, `::test_post_expiry_activity_not_transition_event`, `::test_task_validation_requires_boundary_marker_for_expiry`, `::test_boundary_marker_identical_in_both_variants`, `::test_system_event_cannot_hold_authority`, `tests/test_oracle.py::test_time_marker_cannot_change_state`
+
+## REVIEW-014 (MAJOR): Source-class names leaked the answer
+- **File:** `scopeshift/schema.py` (`SourceClass`), all tasks
+- **Symptom:** Pair 1 differed by `AUTHORITATIVE_POLICY_SOURCE` vs `INTERNAL_INFORMATIONAL_SOURCE`.
+- **Impact:** A model could pass by trusting the label, without applying the policy.
+- **Fix:** Replaced the enum with descriptive record types: CHANGE_RECORD, ENGAGEMENT_RECORD, TICKET_RECORD, CHAT_MESSAGE, EMAIL_MESSAGE, ENDPOINT/NETWORK/DLP_TELEMETRY, SYSTEM_EVENT. Pair 1 now differs by `change_management`/`CHANGE_RECORD` vs `ticketing`/`TICKET_RECORD`. Authority comes only from the policy text and the hidden `oracle_spec`.
+- **Regression test:** `::test_source_class_name_does_not_encode_authority_semantics`, `tests/test_pair_integrity.py::test_pair_diff_matches_expected`
+
+## REVIEW-015 (MAJOR): Oracle independence was overstated
+- **File:** `README.md`, `RESEARCH_DECISION.md`, `DEVELOPMENT_LOG.md`, `scopeshift/oracle.py` docstring
+- **Symptom:** The docs said the gold answer "does not come from hand-written labels" and that the oracle "independently derives gold".
+- **Impact:** This overclaimed. The oracle relies on a hand-authored `oracle_spec`.
+- **Fix:** Every location now uses the precise wording: it validates the reference against a deterministic state machine backed by a hand-authored encoding of the visible policy. This catches label/spec inconsistencies but does not prove the encoding matches the English policy, which requires human review.
+- **Regression test:** documentation-only. `tests/test_review_repairs.py` and the mutation check M12 verify what the oracle *does* check.
+
+## REVIEW-016 (MAJOR): `source_authority_accuracy` was only a state/transition proxy
+- **File:** `scopeshift/metrics.py`, `run_eval.py`
+- **Symptom:** Per-task status and transition correctness on probe tasks was reported as "source authority accuracy".
+- **Impact:** A model that ignored the extension entirely got authority credit on 001B.
+- **Fix:** Removed the metric. Added `source_authority_pair_pass_rate` (both variants strictly pass at the same replicate index) and `authority_contrast_consistency` (both variants have the correct status and transition at the same replicate index). Documented as behavioural sensitivity to provenance, not internal reasoning.
+- **Regression test:** `::test_authority_pair_metric_requires_both_variants_correct`, `::test_authority_pair_metric_fails_if_only_A_correct`, `::test_authority_pair_metric_fails_if_only_B_correct`, `::test_authority_metric_ignores_non_authority_pairs`; mutation M17
+
+## REVIEW-017 (MAJOR): Automatic hindsight label inferred internal reasoning
+- **File:** `scopeshift/taxonomy.py`
+- **Symptom:** `HINDSIGHT_RECLASSIFICATION` was assigned automatically from the chosen event alone.
+- **Impact:** It claimed a reasoning process that the output cannot show.
+- **Fix:** Renamed the automatic category to the observational `EARLY_TRANSITION_ON_ACTIVE_EVENT`. `HINDSIGHT_RECLASSIFICATION` is now a manual-only label (`MANUAL_ONLY_LABELS`), for human transcript review when the rationale supports it.
+- **Regression test:** `tests/test_wrong_answers.py::test_early_transition_on_active_event`, `::test_no_automatic_hindsight_claim`, `::test_later_wrong_transition_is_not_early`
+
+## REVIEW-018 (MINOR): Required evidence omitted the decisive contrast event
+- **File:** tasks, `scopeshift/oracle.py`, `prompts/model_under_test_v1.md`
+- **Symptom:** 001B could strictly pass without citing the rejected extension E4, and 002A without citing E6.
+- **Impact:** Strict pass did not show the model had looked at the event that decides the pair.
+- **Fix:** The prompt now states rule (a)/(b)/(c): authorization record(s) and permitted changes; claims that did not take effect; then the transition event if TERMINATED, otherwise the alerted event plus the latest event evaluated against the stop condition. The oracle derives exactly this. New sets: 001A {E1,E4,E7}, 001B {E1,E4,E6}, 002A {E1,E6,E7}, 002B {E1,E6}. Each pair's decisive event is required in both variants.
+- **Regression test:** `::test_pair1B_requires_rejected_extension_evidence`, `::test_pair2A_requires_approved_sink_event`, `::test_pair_mates_cite_same_decisive_event`; mutation M18
+
+## REVIEW-019 (MINOR): All-trials metric was called pass@k
+- **File:** `scopeshift/metrics.py`, `run_eval.py`, README
+- **Symptom:** `strict_pass_at_3` meant "all 3 trials pass", which is pass^k, not pass@k.
+- **Fix:** Renamed to `strict_pass_pow_k` / `pair_pass_pow_k` (shown as "pass^k (all k trials pass)"). Added a true pass@k, `strict_pass_at_k_any`, labelled "reference only".
+- **Regression test:** `::test_pass_pow_k_vs_pass_at_k`, `tests/test_mock_provider.py::test_mock_perfect` (old key absent)
+
+## REVIEW-020 (MINOR): Environment not pinned
+- **File:** `requirements.txt`, `pyproject.toml`, `.python-version`
+- **Fix:** Moved to Python 3.12.3 (installed alongside 3.13). Exact pins for all direct and transitive packages, taken from the working environment (pydantic 2.14.2, pytest 9.2.0, ruff 0.16.9, ...). `pip check` is clean.
+- **Regression test:** `pip check` and the full suite run in the pinned 3.12 venv.
+
+## REVIEW-021 (found during repair): BUG-010's citation gate was invalidated by REVIEW-018
+- **File:** `scopeshift/taxonomy.py`
+- **Symptom:** After REVIEW-018 the prompt asks every model to cite rejected claims, so the missed-transition mock (which cites E4 as rejected) was tagged SOURCE_AUTHORITY_CONFUSION.
+- **Root cause:** On 001B, "trusted the ticket comment" and "missed the expiry" both produce (ACTIVE, null). The citation was the only signal, and it no longer carries meaning.
+- **Impact:** The authority failure count would have been inflated.
+- **Fix:** Assign SOURCE_AUTHORITY_CONFUSION only when the authority-blind answer differs from both the truth and the "nothing ended" answer (ACTIVE, null). It is never auto-assigned on 001B. Authority there is measured by the pair metrics (REVIEW-016).
+- **Regression test:** `tests/test_regressions.py::test_bug010_review021_authority_confusion_not_overattributed`, `tests/test_wrong_answers.py::test_source_authority_confusion_tagged_when_distinguishable`, `::test_pair1b_authority_confusion_not_auto_tagged`; mutation M19
+
+## REVIEW-022 (found during repair): PT-05 and PT-03 both applied after the stop condition
+- **File:** Pair 2 policy text
+- **Symptom:** Once activity after the stop condition counted as "not covered", it matched both PT-03 (OPEN_INCIDENT) and PT-05 (uncovered activity → ESCALATE_TIER2).
+- **Impact:** 002B had two defensible governing rules and actions.
+- **Fix:** PT-05 now begins its escalation clause with "Except where PT-03 applies".
+- **Regression test:** `tests/test_review_repairs.py::test_pt05_defers_to_pt03_in_policy_text`
+
+## REVIEW-023 (found during repair): Authority encoding stricter than the policy text
+- **File:** Pair 1 and Pair 2 policy text (CHG-01, PT-01, PT-04)
+- **Symptom:** The oracle grants authority only when `source` **and** `source_class` match, but the visible policy named only the source.
+- **Impact:** No effect on the 4 pilot tasks, where the two always agree. But it is exactly the spec/text gap REVIEW-015 warns about: a future task with a matching source and a different record type would have a gold answer the visible text does not support.
+- **Fix:** The policy text now names both fields, e.g. "(source: change_management, source_class: CHANGE_RECORD)". Identical in both pair variants.
+- **Regression test:** `tests/test_review_repairs.py::test_policy_text_names_every_authority_grant`

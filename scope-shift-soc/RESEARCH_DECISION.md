@@ -1,6 +1,6 @@
 # RESEARCH_DECISION — ScopeShift-SOC (development pilot)
 
-Status: **pilot design, pre-model-testing**. No model results exist yet. No human or expert
+Status: **pilot design, revised after external review (v0.2), pre-model-testing**. No model results exist yet. No human or expert
 validation has happened yet. Every task is synthetic.
 
 ## 1. Hypothesis
@@ -66,119 +66,176 @@ SOC output schemas; deterministic graders; provider retry and caching infrastruc
 ## 6. Narrow ScopeShift-SOC contribution
 
 **Temporal policy-state tracking under mixed-authority evidence.** One exception is followed
-through a timeline. The scored target is the *lifecycle state at the end of the timeline* plus
-the *exact event at which it changed*, the *rule that governs after the change* and the *action
-that rule requires*. The policy explicitly says which source classes may change state. The
-grading reference is produced by a deterministic state machine that reads the same visible
-fields the model sees. It does not come from hand-written labels.
+through a timeline. The scored target is:
+
+- the *lifecycle state at the end of the timeline*,
+- the *exact event at which it changed*,
+- the *rule that governs after the change*, and
+- the *action that rule requires*.
+
+The visible policy states which sources may change authorization state. Source-class labels are
+descriptive only (e.g. `CHANGE_RECORD`, `TICKET_RECORD`) and never verdict-like.
+
+**What the oracle does and does not prove (revised after external review, REVIEW-015).**
+Reference answers are validated against a deterministic state machine backed by a hand-authored
+machine-readable encoding of the visible policy (`oracle_spec`). This catches inconsistencies
+between the stored reference answer and the encoded policy logic, but it does not prove that
+the machine-readable policy specification faithfully represents the natural-language policy.
+That equivalence requires human review. Within that limit, the oracle evaluates visible values:
+timestamps, `source`, `source_class` and structured details such as hosts, accounts, techniques
+and destinations. It never reads `hidden_reference`.
 
 ## 7. Pilot Pair 1 — source authority / maintenance expiry (DEV-PAIR-001)
 
-- CMS record E1 approves CHG-104 for `app-db-02.corp.example` (account `svc-patch`,
-  window 03:00Z–04:00Z).
-- E2/E3: PowerShell and installer activity inside the window (covered).
-- E4 at 03:40Z: text "CHG-104 extended until 04:30 UTC", with a structured
-  `new_window_end = 04:30Z`.
-  - **Variant A**: E4 comes from `change_management` / `AUTHORITATIVE_POLICY_SOURCE`.
-  - **Variant B**: identical text, from `ticketing` / `INTERNAL_INFORMATIONAL_SOURCE`
-    (a ticket comment).
-- E5: informational ticket comment about progress (both variants).
-- E6 at 04:15Z: same PowerShell/installer pattern; the alert points at E6.
-- Gold A: `ACTIVE`, transition `null`, rule `CHG-02`, `DOCUMENT`, evidence {E1, E4, E6}.
-- Gold B: `TERMINATED`, transition `E6`, rule `CHG-04`, `ESCALATE_TIER2`, evidence {E1, E6}.
-- Probes: SOURCE_AUTHORITY_CONFUSION, STALE_AUTHORIZATION.
+- E1 (03:00Z, `change_management` / `CHANGE_RECORD`) approves CHG-104 for
+  `app-db-02.corp.example`, account `svc-patch`, window 03:00Z–04:00Z.
+- E2/E3: PowerShell and installer activity by `svc-patch` on the approved host (covered).
+- E4 (03:40Z): text "CHG-104 extended until 04:30 UTC", with a structured
+  `new_valid_until = 04:30Z`.
+  - **Variant A**: from `change_management` / `CHANGE_RECORD`.
+  - **Variant B**: identical text, from `ticketing` / `TICKET_RECORD` (a ticket comment).
+- E5 (03:52Z): progress comment in the ticket (both variants).
+- **E6 (04:00:00Z, `system_clock` / `SYSTEM_EVENT`)**: a neutral time marker at the originally
+  approved window end. It is identical in both variants and has no authority (enforced by the
+  schema).
+- E7 (04:15Z): the same PowerShell/installer pattern. The alert points at E7.
+- Policy CHG-01 no longer mentions "signed" records (REVIEW-011). Only `change_management`
+  records may change authorization state.
+
+| Variant | Status | Transition | Rule | Action | Required evidence |
+|---|---|---|---|---|---|
+| A | ACTIVE | null | CHG-02 | DOCUMENT | {E1, E4, E7} |
+| B | TERMINATED | E6 | CHG-04 | ESCALATE_TIER2 | {E1, E4, E6} |
+
+- The pair differs only in `timeline[E4].source` and `timeline[E4].source_class`.
+- Probes: STALE_AUTHORIZATION, plus source authority. Source authority is measured at pair
+  level (§10), because on 001B the answer alone cannot separate "trusted the comment" from
+  "missed the expiry".
 
 ## 8. Pilot Pair 2 — penetration-test stop condition (DEV-PAIR-002)
 
-- RoE record E1 (Security Engagement Register) approves PT-2026-031: tester source
-  198.51.100.23, targets `*.stg.corp.example`, methods including password spraying, PsExec
-  lateral movement, LSASS credential dumping and exfiltration *simulation to the approved sink
-  203.0.113.50 only*. Window 09:00Z–17:00Z. A stop condition (PT-03) is defined.
-- E2–E4: aggressive but in-scope activity (spraying, PsExec, protected test data sent to the
-  approved sink).
-- E5: tester chat message saying "all transfers go to our sink" (USER_STATEMENT, both variants).
-- E6 at 11:30Z: DLP records a protected-data transfer.
-  - **Variant A**: destination 203.0.113.50 (approved sink).
-  - **Variant B**: destination 192.0.2.77 (`files.storage-share.example`, not approved).
-- E7 at 11:45Z: LSASS access on a staging host; the alert points at E7.
-- Gold A: `ACTIVE`, `null`, `PT-02`, `MONITOR`, evidence {E1, E7}.
-- Gold B: `TERMINATED`, `E6`, `PT-03`, `OPEN_INCIDENT`, evidence {E1, E6}.
-- Probes: PREMATURE_TERMINATION (A) vs MISSED_TERMINATION (B). The alert in B sits one event
-  after the transition, so "the alerted event is the transition" is wrong.
+- E1 (`engagement_register` / `ENGAGEMENT_RECORD`) approves PT-2026-031. It defines:
+  - the **approved initial ingress source** 198.51.100.23;
+  - the **approved targets**: all hosts under `stg.corp.example`;
+  - the **approved methods**: password spraying, PsExec lateral movement (the only method
+    approved for lateral movement), LSASS credential dumping, and exfiltration simulation to
+    the approved sink 203.0.113.50 only;
+  - the window 09:00Z–17:00Z.
+
+  The same values appear as structured details that the oracle checks.
+- **PT-02 (revised, REVIEW-012)** covers three kinds of activity:
+  - activity originating from the approved ingress source;
+  - activity executed on an approved target;
+  - an approved lateral-movement method executed from one approved target to another.
+
+  In every case the activity must use an approved method, affect only approved targets, and
+  send any protected data only to the sink. Covered activity "does not by itself end the
+  authorization".
+- **PT-05** escalates uncovered activity "except where PT-03 applies". That removes the overlap
+  with the stop-condition rule.
+- E2: password spraying from the ingress IP against `stg-dc-01`. E3: PsExec from `stg-web-01`
+  to `stg-app-02`, both in scope. E4: protected test data sent to the approved sink.
+- E5: tester chat message saying "all transfers go to our sink" (`CHAT_MESSAGE`).
+- E6 (11:30Z): DLP records a protected-data transfer.
+  - **Variant A**: to 203.0.113.50, the approved sink.
+  - **Variant B**: to 192.0.2.77 (`files.storage-share.example`), not approved.
+- E7 (11:45Z): LSASS credential dumping on `stg-app-02`. The alert points at E7.
+
+| Variant | Status | Transition | Rule | Action | Required evidence |
+|---|---|---|---|---|---|
+| A | ACTIVE | null | PT-02 | MONITOR | {E1, E6, E7} |
+| B | TERMINATED | E6 | PT-03 | OPEN_INCIDENT | {E1, E6} |
+
+- Oracle coverage in A: E2, E3, E4, E6 and E7 are all covered. In B, E2–E4 are covered and E6
+  is the first event that is not.
 
 ## 9. Exact transition mechanism
 
-The state machine (`scopeshift/oracle.py`) processes events in timeline order with three states:
+The state machine processes events in timeline order with three states:
 `INACTIVE → ACTIVE → TERMINATED`. Before each event is applied:
 
-- **Expiry**: an `ACTIVE` exception is valid while `event_time < valid_until`. At
-  `event_time >= valid_until` it is `TERMINATED` (cause `EXPIRED`), and the **transition event
-  is the first timeline event whose timestamp is at or after the end time**.
+- **Expiry**: valid while `event_time < valid_until`; expired at `event_time >= valid_until`.
+  The transition event is the first event at or after the end time. **Revised convention
+  (REVIEW-013):** every time-based expiry in a task must have an event *exactly* at the window
+  end. In the pilot this is a neutral `SYSTEM_EVENT` time marker present in both variants.
+  Task validation fails if the expiry transition lands on a later event. As a result, the
+  reference transition is the real boundary (E6 at 04:00 in 001B), not the first later
+  activity (E7 at 04:15).
 - **Activation**: a pending authorization becomes `ACTIVE` at the first event with
   `event_time >= valid_from`.
 
 Then the event itself is applied:
 
-- **Extension**: only by a source authorized for EXTEND, only while `ACTIVE`, and only if
-  recorded before the current end (an expired window cannot be revived).
-- **Revocation**: only by a source authorized for REVOKE. Effective at the event; *not
-  retroactive*. Earlier events keep the state they were evaluated under (`event_states`).
+- **Extension**: only by a source authorized for EXTEND, only while `ACTIVE`, and only to a
+  later end time.
+- **Revocation**: only by a source authorized for REVOKE. Effective at that event; *not
+  retroactive*.
 - **Stop condition**: a protected-data transfer to a destination outside the approved sinks,
-  observed by a source authorized to establish stop conditions. Terminates at that event.
-- Only the **first** transition is recorded. TERMINATED is absorbing.
+  reported by permitted telemetry (`dlp`/`netflow`). Terminates at that event.
+- **Coverage** (per `ACTIVITY` / `DATA_TRANSFER` event) is evaluated from visible details
+  against the authorizing record:
+  - maintenance: approved host and account;
+  - pentest: ingress source, target suffix, approved method, lateral-method restriction, sink.
 
-**Design decision to review:** the brief suggested "the authoritative expiration event" as the
-Pair 1B transition. In practice a CMS rarely writes an "expired" record, and adding one only to
-variant B would add a second difference to the pair and an easy cue. So time-based expiry uses
-"first event at or after the end time" (E6 in 001B). The model prompt states this convention
-explicitly.
+  Out-of-scope activity is reported as not covered (PT-05 / CHG-04) but does not terminate the
+  exception.
+- Only the **first** transition is recorded.
 
-## 10. Source-authority mechanism
+## 10. Source-authority mechanism and how it is measured
 
-- The visible policy names which `(source, source_class)` may CREATE / EXTEND / REVOKE
-  authorizations and which may ESTABLISH_STOP_CONDITION.
-- `oracle_spec.authority` encodes the same table. The oracle checks the *visible* event's
-  `source` and `source_class` against it. So flipping a visible source field in the task
-  changes the oracle's output, and the validator can detect a mismatch with `hidden_reference`.
-- A claimed state change from an unauthorized source is recorded as `rejected_claims` and has
-  no effect.
+- The visible policy names which `source` may create, extend, modify or revoke an authorization
+  (CHG-01, PT-01) and which may establish a stop condition (PT-04).
+- `source_class` values are descriptive record types with no verdict words (REVIEW-014). A test
+  forbids AUTHORIT, TRUST, VALID, INFORMATIONAL, OFFICIAL, VERIFIED, SIGNED and LEGIT in any
+  class name or source.
+- `oracle_spec.authority` encodes the policy table. The oracle checks the visible `source` and
+  `source_class` against it. `SYSTEM_EVENT` may never hold authority (schema check).
+- **Measurement (REVIEW-016):** there is no per-task "authority accuracy". Instead, on pairs
+  carrying the SOURCE_AUTHORITY probe, both variants are compared at the same replicate index:
+  - `source_authority_pair_pass_rate`: both variants strictly pass;
+  - `authority_contrast_consistency`: both variants have the correct status and transition.
+
+  These measure behavioural sensitivity to provenance under a controlled contrast, not
+  internal reasoning.
 
 ## 11. Why each gold answer is unique
 
-- Status: the state machine is deterministic and the policy gives exactly one rule per terminal
-  situation (covered / expired / revoked / stop condition).
-- Transition: "first event satisfying the condition" picks one event. Ties are broken by
-  timeline order, and the timelines contain no same-timestamp events.
-- Rule: each situation maps to one rule ID. The authority rules (CHG-01, PT-04) and the window
-  definition rule (CHG-03) describe conditions; they do not prescribe actions. The rule
-  *prescribing the response* is the one requested.
-- Action: each governing rule names exactly one action from the enum.
+- **Status**: deterministic state machine; each terminal situation maps to exactly one rule.
+- **Transition**: the first event satisfying the condition. The boundary marker makes the
+  expiry event explicit. There are no same-timestamp events.
+- **Rule**: the rule that *prescribes the response*. Authority and definition rules (CHG-01,
+  CHG-03, PT-01, PT-04) prescribe no action. PT-05 explicitly defers to PT-03.
+- **Action**: each governing rule names exactly one action.
+- **Evidence** (REVIEW-018): the prompt's rule (a)/(b)/(c) maps one-to-one onto the oracle's
+  derivation. Each pair's decisive event (E4 in pair 1, E6 in pair 2) is required in *both*
+  variants, so the evidence requirement does not reveal the variant.
 
-## 12. Possible ambiguity (needs human SOC review)
+## 12. Possible ambiguity (still needs human SOC review)
 
-- "Governing rule" could be read as the authority rule (CHG-01) in 001B, because CHG-01 is
-  *why* the comment is ignored. The prompt defines governing rule as the one that prescribes
-  the required action at the end of the timeline. Reviewers should confirm this is clear.
-- The transition convention for time-based expiry (§9).
-- In 002A, `MONITOR` vs `DOCUMENT` for covered pentest activity is set by policy text PT-02. A
-  real SOC might choose differently, but the policy is explicit.
-- In 002B, some analysts would argue for `ISOLATE_HOST` too. The policy names `OPEN_INCIDENT`
-  as the required primary action.
-- Required-evidence sets are minimal supporting sets. A reasonable analyst might cite E3 in
-  001B (the rejected comment). Evidence scoring is coverage-only (extra valid IDs are allowed
-  up to the cap), so this is not penalized.
+- Is the neutral time-marker event a fair representation, or does its presence cue "something
+  happens at 04:00"? It is identical in both variants, so it cannot discriminate between them.
+- In 001A, is citing E6 (the marker) expected? It is not required. Coverage-only scoring means
+  citing it is not penalized.
+- Is `MONITOR` (PT-02) right for covered pentest activity? Is `OPEN_INCIDENT` (PT-03) right
+  after the stop condition, rather than `ISOLATE_HOST`? Both are stated by the policy text.
+- Is the lateral-movement scope (target → target via PsExec; LSASS on any approved target)
+  realistic rules-of-engagement wording?
+- Would a competent analyst cite exactly the required evidence sets under the prompt's
+  (a)/(b)/(c) rule?
 
 ## 13. Possible grader gaming and defenses
 
-- Listing every action or rule: the schema needs exactly one enum string, and unknown rule IDs
-  score 0.
-- Listing every event: `evidence_ids` is capped at 4, and every timeline has 6–7 events.
+- **Listing every action or rule:** the schema requires exactly one enum string, and unknown
+  rule IDs score 0.
+- **Listing every event:** `evidence_ids` is capped at 4, and every timeline has 7 events.
   Unknown IDs fail strict pass.
-- Multiple contradictory answers: duplicate JSON keys, concatenated objects, unknown fields and
-  non-JSON preambles are all parse failures.
-- "Always ACTIVE" / "always TERMINATED": each pair has opposite gold states, so a constant
-  policy passes at most one variant and `pair_pass_at_3` is 0.
-- "Alerted event = transition": fails 002B.
+- **Multiple or contradictory answers:** duplicate JSON keys, concatenated objects, unknown
+  fields and non-JSON text are parse failures.
+- **Constant "always ACTIVE" / "always TERMINATED":** each pair has opposite gold states, so
+  `pair_pass^3` = 0.
+- **"Alerted event = transition":** fails both B variants. The transition is E6 and the alert
+  is E7.
+- **"Authoritative-sounding label = trust":** no longer possible. Class names carry no verdict.
 
 ## 14. Possible software bugs (actively checked; see BUG_LOG.md)
 
@@ -194,7 +251,11 @@ All reference answers pass. Deliberately wrong answers fail on the expected dime
 diffs equal the declared differences. The oracle equals `hidden_reference` for all 4 tasks. No
 hidden data appears in prompts. mock-perfect scores 100%. Wrong mocks fail where expected.
 Timeout mock produces infrastructure failures and no model failures. All tests and validation
-scripts pass.
+scripts pass. All mutations are killed. The environment is pinned (`pip check` clean).
+
+**Software success is necessary but not sufficient.** Before a real-model pilot, a human SOC
+reviewer must also confirm that the task semantics are unambiguous (§12), and that `oracle_spec`
+faithfully encodes the visible policy (§6).
 
 ## 16. Pivot criteria (after a real-model pilot)
 

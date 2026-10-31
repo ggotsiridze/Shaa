@@ -6,9 +6,10 @@
 2. Wrote the schema (Pydantic v2, frozen, `extra="forbid"` everywhere; the answer model also uses
    `strict=True` so it never coerces types, e.g. a list into a string).
 3. Wrote the oracle as a state machine that reads visible `source`/`source_class`/`details` plus
-   a hidden `oracle_spec`. The spec encodes the policy: the authority table, which claim each
-   event makes, and rule outcomes. It never reads `hidden_reference`. On its first run it agreed
-   with the hand-written references for all 4 tasks.
+   a hidden, hand-authored `oracle_spec`. The spec encodes the policy: the authority table,
+   which claim each event makes, and rule outcomes. It never reads `hidden_reference`. On its
+   first run it agreed with the stored references for all 4 tasks. (Its limits are described
+   precisely in v0.2 / REVIEW-015.)
 4. Wrote the prompt, parser, grader, taxonomy, pair validator, alignment check, mocks, harness,
    metrics and CLI.
 5. Wrote the tests. First run: 162 passed, 1 failed, which led to BUG-001.
@@ -20,11 +21,45 @@
 8. Required mock runs: the taxonomy over-attributed SOURCE_AUTHORITY_CONFUSION to
    `mock-missed-transition` on 001B (BUG-010). Fixed by requiring citation of the rejected event.
 
+## 2026-10-31: v0.2 repair after external adversarial review
+
+The review found that the software was mechanically sound but that some task semantics allowed
+more than one defensible answer. Repairs (details and tests in BUG_LOG.md, REVIEW-011 to REVIEW-022):
+
+1. **Blockers.**
+   - Removed the unexposed "signed" requirement from CHG-01 (REVIEW-011).
+   - Rewrote PT-01/PT-02 so that initial ingress, on-target activity and target-to-target
+     lateral movement are distinct and each explicitly covered (REVIEW-012).
+   - While doing that, found and fixed a PT-03/PT-05 overlap (REVIEW-022) and an authority
+     encoding that was stricter than the policy text (REVIEW-023).
+2. **Transition model.** Added a neutral 04:00:00Z `SYSTEM_EVENT` time marker (E6) to both Pair 1
+   variants. Activity moved to E7. Validation now requires every expiry transition to sit exactly
+   at the window end (REVIEW-013).
+3. **Source classes.** Replaced the verdict-like classes with descriptive record types
+   (REVIEW-014).
+4. **Oracle.** Scope is now evaluated from visible structured details: maintenance host and
+   account; pentest ingress IP, target suffix, approved method, lateral-only method, sink. Added
+   per-event `event_coverage`. Out-of-scope activity is reported but does not terminate. Wording
+   about oracle independence was corrected everywhere (REVIEW-015).
+5. **Metrics.**
+   - Replaced `source_authority_accuracy` with the pair-level `source_authority_pair_pass_rate`
+     and `authority_contrast_consistency` (REVIEW-016).
+   - pass@k → pass^k naming, plus a separate true pass@k (REVIEW-019).
+6. **Taxonomy.**
+   - `HINDSIGHT_RECLASSIFICATION` is now manual-only. The automatic category is
+     `EARLY_TRANSITION_ON_ACTIVE_EVENT` (REVIEW-017).
+   - Found that BUG-010's citation gate no longer worked once rejected claims must be cited.
+     Replaced it with a distinguishability test (REVIEW-021).
+7. **Evidence.** The prompt's rule (a)/(b)/(c) and the oracle derivation now match exactly. Each
+   pair's decisive event is required in both variants (REVIEW-018).
+8. **Environment.** Python 3.12.3, exact pins, `pip check` clean (REVIEW-020).
+9. **Mutations:** 7 new ones (M13–M19) covering the new logic. 19/19 killed.
+
 ## Design decisions made during the pilot (need author review)
 
-- **Transition event for time-based expiry** = first event at or after the end time (see
-  RESEARCH_DECISION §9). The alternative was an explicit "expired" CMS record, which would have
-  been a second pair difference and an easy cue.
+- **Transition event for time-based expiry** (revised in v0.2): an identical neutral time marker
+  sits exactly at the window end in both variants, and validation requires it. The v0.1
+  convention ("first later event") was rejected by the review (REVIEW-013).
 - **`governing_rule_id`** = the rule that *prescribes the action*, not the authority rule that
   explains why a claim was ignored. The prompt says this explicitly.
 - **Evidence scoring** counts coverage only (recall), with a hard cap of 4 IDs, rather than
@@ -45,6 +80,9 @@
 - **Same-timestamp events** are processed in listed order. The pilot timelines have none.
 - **Pilot difficulty is unknown.** Pair 1 is a single extension; frontier models may find it easy.
   See the pivot criteria.
-- **Oracle and tasks share an author.** The oracle independently checks the *labels* given the
-  `oracle_spec`. It cannot check that `oracle_spec` faithfully encodes the visible policy text.
-  That needs human review.
+- **Oracle and tasks share an author.** The oracle checks the stored *labels* against the
+  hand-authored `oracle_spec`. It cannot check that `oracle_spec` faithfully encodes the visible
+  policy text. That needs human review.
+- **Source authority on 001B cannot be diagnosed from a single answer.** "Trusted the comment"
+  and "missed the expiry" give the same answer. Only the pair-level metrics speak to authority
+  there (REVIEW-021).

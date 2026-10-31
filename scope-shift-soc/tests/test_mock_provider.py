@@ -26,11 +26,13 @@ def by_task(recs):
 def test_mock_perfect(tasks):
     _, recs, m = run(tasks, "mock-perfect")
     assert all(r.strict_pass and r.score == 1.0 for r in recs)
-    assert m["task_pass_rate"] == 1.0 and m["strict_pass_at_3"] == 1.0 and m["pair_pass_at_3"] == 1.0
+    assert m["task_pass_rate"] == 1.0 and m["strict_pass_pow_3"] == 1.0 and m["pair_pass_pow_3"] == 1.0
     for k in ("exception_state_accuracy", "transition_event_accuracy", "governing_rule_accuracy",
-              "primary_action_accuracy", "evidence_coverage", "source_authority_accuracy"):
+              "primary_action_accuracy", "evidence_coverage", "source_authority_pair_pass_rate",
+              "authority_contrast_consistency"):
         assert m[k] == 1.0, k
     assert m["parse_failure_rate"] == 0.0 and m["infrastructure_failure_rate"] == 0.0
+    assert "source_authority_accuracy" not in m and "strict_pass_at_3" not in m  # REVIEW-016/019
 
 
 def test_mock_wrong_action(tasks):
@@ -38,6 +40,7 @@ def test_mock_wrong_action(tasks):
     assert not any(r.strict_pass for r in recs)
     assert m["primary_action_accuracy"] == 0.0 and m["exception_state_accuracy"] == 1.0
     assert m["transition_event_accuracy"] == 1.0 and all(r.score == pytest.approx(0.8) for r in recs)
+    assert m["authority_contrast_consistency"] == 1.0 and m["source_authority_pair_pass_rate"] == 0.0
     bt = by_task(recs)
     assert all(r.failure_types == ["WRONG_RESPONSE_AFTER_TRANSITION"] for r in bt["SS-DEV-001B"] + bt["SS-DEV-002B"])
 
@@ -48,9 +51,10 @@ def test_mock_missed_transition(tasks):
     assert all(r.strict_pass for r in bt["SS-DEV-001A"] + bt["SS-DEV-002A"])  # constant ACTIVE fits A
     for r in bt["SS-DEV-001B"] + bt["SS-DEV-002B"]:
         assert not r.strict_pass and "MISSED_TERMINATION" in r.failure_types
-    assert "STALE_AUTHORIZATION" in bt["SS-DEV-001B"][0].failure_types
-    assert "SOURCE_AUTHORITY_CONFUSION" not in bt["SS-DEV-001B"][0].failure_types  # BUG-010
-    assert m["missed_termination_rate"] == 1.0 and m["pair_pass_at_3"] == 0.0 and m["strict_pass_at_3"] == 0.5
+    assert set(bt["SS-DEV-001B"][0].failure_types) == {"MISSED_TERMINATION", "STALE_AUTHORIZATION"}
+    assert bt["SS-DEV-002B"][0].failure_types == ["MISSED_TERMINATION"]
+    assert m["missed_termination_rate"] == 1.0 and m["pair_pass_pow_3"] == 0.0 and m["strict_pass_pow_3"] == 0.5
+    assert m["source_authority_pair_pass_rate"] == 0.0 and m["authority_contrast_consistency"] == 0.0
 
 
 def test_mock_premature_transition(tasks):
@@ -58,9 +62,10 @@ def test_mock_premature_transition(tasks):
     bt = by_task(recs)
     for r in bt["SS-DEV-001A"] + bt["SS-DEV-002A"]:
         assert r.failure_types == ["PREMATURE_TERMINATION"]
-    assert all(r.strict_pass for r in bt["SS-DEV-001B"])  # alerted event is the true transition there
-    assert all(r.failure_types == ["WRONG_TRANSITION_EVENT"] for r in bt["SS-DEV-002B"])
-    assert m["premature_termination_rate"] == 1.0 and m["pair_pass_at_3"] == 0.0
+    # the alerted event (E7) is never the true transition (E6) in the revised pilot
+    for r in bt["SS-DEV-001B"] + bt["SS-DEV-002B"]:
+        assert r.failure_types == ["WRONG_TRANSITION_EVENT"]
+    assert m["premature_termination_rate"] == 1.0 and m["task_pass_rate"] == 0.0 and m["pair_pass_pow_3"] == 0.0
 
 
 def test_mock_source_authority_confusion(tasks):
@@ -68,10 +73,11 @@ def test_mock_source_authority_confusion(tasks):
     bt = by_task(recs)
     for r in bt["SS-DEV-001B"]:
         assert not r.strict_pass
-        assert set(r.failure_types) == {"SOURCE_AUTHORITY_CONFUSION", "MISSED_TERMINATION", "STALE_AUTHORIZATION"}
+        assert set(r.failure_types) == {"MISSED_TERMINATION", "STALE_AUTHORIZATION"}  # REVIEW-021
     for tid in ("SS-DEV-001A", "SS-DEV-002A", "SS-DEV-002B"):
         assert all(r.strict_pass for r in bt[tid]), tid
-    assert m["source_authority_accuracy"] == 0.5 and m["stale_authorization_rate"] == 1.0
+    assert m["source_authority_pair_pass_rate"] == 0.0 and m["authority_contrast_consistency"] == 0.0
+    assert m["stale_authorization_rate"] == 1.0 and m["task_pass_rate"] == 0.75
 
 
 def test_mock_malformed_and_empty_are_parse_failures(tasks):
@@ -89,7 +95,8 @@ def test_timeout_is_infrastructure_failure(tasks):
     assert all(r.attempt_count == 3 for r in recs) and p.calls == 36  # bounded: 3 attempts x 12 trials
     assert m["infrastructure_failure_rate"] == 1.0
     assert m["task_pass_rate"] is None and m["parse_failure_rate"] is None  # no scored trials, not 0%
-    assert m["strict_pass_at_3"] is None and len(m["tasks_incomplete_due_to_infra"]) == 4
+    assert m["strict_pass_pow_3"] is None and len(m["tasks_incomplete_due_to_infra"]) == 4
+    assert m["source_authority_pair_pass_rate"] is None and m["authority_contrast_consistency"] is None
 
 
 def test_flaky_retries_then_succeeds(tasks):

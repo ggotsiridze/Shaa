@@ -10,7 +10,7 @@ def test_cli_writes_results_and_transcripts(tmp_path):
                         "--trials", "2", "--results-dir", str(tmp_path / "r"), "--transcripts-dir", str(tmp_path / "t")])
     assert rc == 0
     summary = json.loads(next((tmp_path / "r").glob("*.json")).read_text())
-    assert summary["metrics"]["strict_pass_at_2"] == 1.0
+    assert summary["metrics"]["strict_pass_pow_2"] == 1.0
     lines = next((tmp_path / "t").glob("*.jsonl")).read_text().splitlines()
     assert len(lines) == 8 and len({json.loads(x)["trial_id"] for x in lines}) == 8
 

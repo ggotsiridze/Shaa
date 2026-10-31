@@ -20,7 +20,7 @@ def test_bug001_missed_transition_mock_cites_authorizing_events(by_id):
     t = by_id["SS-DEV-001A"]
     p = MockProvider.from_tasks("mock-missed-transition", [t])
     ans = json.loads(p.complete(build_prompt(t)).text)
-    assert ans["evidence_ids"] == ["E1", "E4", "E6"]
+    assert ans["evidence_ids"] == ["E1", "E4", "E7"]
 
 
 def test_bug002_crlf_fence_parses():
@@ -83,13 +83,13 @@ def test_bug009_reference_evidence_checked():
     assert len(problems) == 1 and "required_evidence_ids" in problems[0]
 
 
-def test_bug010_authority_confusion_requires_citing_rejected_event(by_id):
+def test_bug010_review021_authority_confusion_not_overattributed(by_id):
+    # BUG-010 required citing the rejected event; REVIEW-018 now asks every model to cite rejected
+    # claims, so citation no longer signals trust. On 001B the label is never auto-assigned.
     from scopeshift.taxonomy import Failure, classify
     t = by_id["SS-DEV-001B"]
     base = {"exception_status": "ACTIVE", "transition_event_id": None, "governing_rule_id": "CHG-02",
             "primary_action": "DOCUMENT", "rationale": "x"}
-    without = parse_response(json.dumps({**base, "evidence_ids": ["E1", "E6"]}))
-    with_e4 = parse_response(json.dumps({**base, "evidence_ids": ["E1", "E4", "E6"]}))
-    assert Failure.SOURCE_AUTHORITY_CONFUSION not in classify(t, without, False)
-    assert Failure.MISSED_TERMINATION in classify(t, without, False)
-    assert Failure.SOURCE_AUTHORITY_CONFUSION in classify(t, with_e4, False)
+    for ev in (["E1", "E7"], ["E1", "E4", "E7"]):
+        tags = classify(t, parse_response(json.dumps({**base, "evidence_ids": ev})), False)
+        assert Failure.SOURCE_AUTHORITY_CONFUSION not in tags and Failure.MISSED_TERMINATION in tags

@@ -23,7 +23,7 @@ def test_partial_scores(by_id):
     assert g(t, primary_action="DOCUMENT").score == pytest.approx(0.8)
     assert g(t, governing_rule_id="CHG-01").score == pytest.approx(0.8)
     assert g(t, transition_event_id="E5").score == pytest.approx(0.75)
-    assert g(t, evidence_ids=["E1"]).score == pytest.approx(0.95)
+    assert g(t, evidence_ids=["E1"]).score == pytest.approx(0.9 + 0.1 / 3)  # 1 of 3 required
 
 
 def test_unknown_event_id_fails_strict(by_id):

@@ -14,7 +14,7 @@ def test_pair_diff_matches_expected(tasks):
         assert r.ok, r.problems
     r1 = reports[0]
     assert set(r1.visible_diff) == {"timeline[E4].source", "timeline[E4].source_class"}
-    assert r1.visible_diff["timeline[E4].source_class"] == ("AUTHORITATIVE_POLICY_SOURCE", "INTERNAL_INFORMATIONAL_SOURCE")
+    assert r1.visible_diff["timeline[E4].source_class"] == ("CHANGE_RECORD", "TICKET_RECORD")
 
 
 def test_pair1_extension_text_identical(by_id):
@@ -62,7 +62,7 @@ def test_unexpected_asset_or_name_change_fails(by_id):
 def test_missing_declared_difference_fails(by_id):
     def f(r):
         e4 = r["model_visible"]["timeline"][3]
-        e4["source"], e4["source_class"] = "change_management", "AUTHORITATIVE_POLICY_SOURCE"
+        e4["source"], e4["source_class"] = "change_management", "CHANGE_RECORD"
         r["hidden_reference"] = raw_task("SS-DEV-001A")["hidden_reference"]
     rep = _check(by_id, _mutated("SS-DEV-001B", f))
     assert not rep.ok and any("not present" in p for p in rep.problems)
@@ -72,7 +72,7 @@ def test_event_order_change_detected(by_id):
     a = by_id["SS-DEV-002A"]
     raw = copy.deepcopy(a.model_dump(mode="json"))
     raw["model_visible"]["timeline"].insert(5, {"event_id": "E8", "timestamp": "2026-10-30T11:20:00Z", "source": "edr",
-                                                "source_class": "AUTHORITATIVE_SECURITY_TELEMETRY", "event": "x"})
+                                                "source_class": "ENDPOINT_TELEMETRY", "event": "x"})
     diff = diff_visible(a, Task.model_validate(raw))
     assert "timeline.__order__" in diff and "timeline[E8].event" in diff
 

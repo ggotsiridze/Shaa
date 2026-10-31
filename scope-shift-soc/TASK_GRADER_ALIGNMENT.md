@@ -13,7 +13,7 @@ numbers.
 | `transition_event_id` | 25% weight; exact match (incl. `null`); unknown event ID fails strict pass | L12: identify "the first event where that condition becomes satisfied", plus the end-time convention; L17: "the event_id of the first event at which the exception stopped governing … or null if exception_status is not TERMINATED" |
 | `governing_rule_id` | 20% weight; exact match against one policy rule ID | L18: "the id of the single policy rule that prescribes the required action at the end of the timeline" |
 | `primary_action` | 20% weight; exact enum match | L19: "exactly one of" the six enum values |
-| `evidence_coverage` (`evidence_ids`) | 10% weight = fraction of required IDs cited; strict pass needs all of them; unknown IDs → 0 and strict fail; >4 IDs or duplicates → parse failure | L20: "a list of 1 to 4 distinct event_id strings from the timeline. Cite every event necessary … the event(s) that establish the authorization currently or last in force, and the transition event (if TERMINATED) or the alerted event (if not TERMINATED)" |
+| `evidence_coverage` (`evidence_ids`) | 10% weight = fraction of required IDs cited; strict pass needs all of them; unknown IDs → 0 and strict fail; >4 IDs or duplicates → parse failure | L20: "a list of 1 to 4 distinct event_id strings from the timeline. Cite every event necessary … (a) the event(s) that created the authorization and any permitted change to it; (b) any event that claimed to create, extend, modify or revoke the authorization but did not take effect; (c) if exception_status is TERMINATED, the transition event; otherwise, the alerted event and, if the policy defines a stop condition, the most recent event that was evaluated against that stop condition" |
 | `rationale_limit` | Not scored; more than 600 chars → parse failure | L21: "a brief explanation of at most 600 characters" |
 | `single_json_object` | Extra text, extra fields or multiple objects → parse failure (a single whole-response ```json fence is tolerated) | L14: "Return only the required JSON object, with exactly these six fields and no others"; L23: "Do not wrap the JSON in any other text" |
 | `single_value` | A list or multiple values in a scalar field → parse failure | L23: "Each field takes a single value of the stated type; lists of alternatives are not accepted" |
@@ -28,6 +28,7 @@ numbers.
 
 ## Known tension (for human review)
 
-The required evidence sets are the minimal set the oracle derives: the authorization-establishing
-event(s) plus the transition event or the alerted event. The prompt describes this rule in
-words (L20). A reviewer should confirm that a competent analyst would read L20 the same way.
+The required evidence sets are exactly what the oracle derives from rule (a)/(b)/(c) on L20
+(REVIEW-018): 001A {E1,E4,E7}, 001B {E1,E4,E6}, 002A {E1,E6,E7}, 002B {E1,E6}. Each pair's
+decisive event (E4 / E6) is required in both variants. A reviewer should confirm that a
+competent analyst would read L20 the same way.

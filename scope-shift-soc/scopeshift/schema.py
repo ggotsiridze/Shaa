@@ -20,12 +20,23 @@ MAX_RATIONALE_CHARS = 600
 
 
 class SourceClass(str, Enum):
-    AUTHORITATIVE_POLICY_SOURCE = "AUTHORITATIVE_POLICY_SOURCE"
-    AUTHORITATIVE_SECURITY_TELEMETRY = "AUTHORITATIVE_SECURITY_TELEMETRY"
-    INTERNAL_INFORMATIONAL_SOURCE = "INTERNAL_INFORMATIONAL_SOURCE"
-    USER_STATEMENT = "USER_STATEMENT"
-    EXTERNAL_CONTENT = "EXTERNAL_CONTENT"
-    UNTRUSTED_TEXT = "UNTRUSTED_TEXT"
+    """Descriptive record types. Deliberately verdict-free (no AUTHORITATIVE/TRUSTED/...):
+    which sources may change authorization state is stated only in the visible policy text
+    and encoded, hidden, in oracle_spec.authority (REVIEW-014)."""
+
+    CHANGE_RECORD = "CHANGE_RECORD"
+    ENGAGEMENT_RECORD = "ENGAGEMENT_RECORD"
+    TICKET_RECORD = "TICKET_RECORD"
+    CHAT_MESSAGE = "CHAT_MESSAGE"
+    EMAIL_MESSAGE = "EMAIL_MESSAGE"
+    ENDPOINT_TELEMETRY = "ENDPOINT_TELEMETRY"
+    NETWORK_TELEMETRY = "NETWORK_TELEMETRY"
+    DLP_TELEMETRY = "DLP_TELEMETRY"
+    SYSTEM_EVENT = "SYSTEM_EVENT"
+
+
+# Source classes that may never hold authority over authorization state (validated in Task).
+NON_AUTHORITY_SOURCE_CLASSES = frozenset({SourceClass.SYSTEM_EVENT})
 
 
 class ExceptionStatus(str, Enum):
@@ -57,7 +68,13 @@ class EventKind(str, Enum):
     AUTHORIZATION_EXTEND = "AUTHORIZATION_EXTEND"
     AUTHORIZATION_REVOKE = "AUTHORIZATION_REVOKE"
     DATA_TRANSFER = "DATA_TRANSFER"
-    SCOPE_ACTIVITY = "SCOPE_ACTIVITY"
+    ACTIVITY = "ACTIVITY"  # coverage is evaluated from visible details, not assumed
+    TIME_MARKER = "TIME_MARKER"  # neutral clock event; never changes state by itself
+
+
+class ScopeModel(str, Enum):
+    MAINTENANCE = "MAINTENANCE"
+    PENTEST = "PENTEST"
 
 
 class TerminationCause(str, Enum):
@@ -167,11 +184,13 @@ class RuleMap(Strict):
     expired: RuleOutcome | None = None
     revoked: RuleOutcome | None = None
     stop_condition: RuleOutcome | None = None
+    out_of_scope: RuleOutcome | None = None
     no_exception: RuleOutcome | None = None
 
 
 class OracleSpec(Strict):
     exception_id: str
+    scope_model: ScopeModel
     authority: list[AuthorityGrant] = Field(min_length=1)
     event_semantics: list[EventSemantics]
     rule_map: RuleMap
@@ -217,7 +236,10 @@ class Task(Strict):
         for sem in spec.event_semantics:
             if sem.event_id not in event_ids:
                 raise ValueError(f"oracle_spec semantics references unknown {sem.event_id}")
-        for name in ("covered", "expired", "revoked", "stop_condition", "no_exception"):
+        for grant in spec.authority:
+            if grant.source_class in NON_AUTHORITY_SOURCE_CLASSES:
+                raise ValueError(f"{grant.source_class.value} may not hold authority ({grant.capability.value})")
+        for name in ("covered", "expired", "revoked", "stop_condition", "out_of_scope", "no_exception"):
             outcome = getattr(spec.rule_map, name)
             if outcome is not None and outcome.rule_id not in rule_ids:
                 raise ValueError(f"rule_map.{name} references unknown rule {outcome.rule_id}")

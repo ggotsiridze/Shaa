@@ -8,7 +8,7 @@
       "timeline[E4].source",
       "timeline[E4].source_class"
     ],
-    "purpose": "Identical extension text; only the source authority differs."
+    "purpose": "Identical extension text and identical 04:00 time marker; only the provenance (source, descriptive source_class) of E4 differs."
   },
   "DEV-PAIR-002": {
     "variants": {
@@ -20,6 +20,6 @@
       "timeline[E6].details.destination_ip",
       "timeline[E6].details.destination_host"
     ],
-    "purpose": "Same engagement; only the destination of the E6 protected-data transfer differs."
+    "purpose": "Same engagement and in-scope activity; only the destination of the E6 protected-data transfer differs."
   }
 }

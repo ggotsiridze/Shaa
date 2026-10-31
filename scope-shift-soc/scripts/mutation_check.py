@@ -35,7 +35,7 @@ MUTATIONS = [
     ("M8 infrastructure failure counted as model failure", "scopeshift/harness.py",
      "rec.infrastructure_failure = True\n", "rec.infrastructure_failure = True\n        rec.model_failure = True\n"),
     ("M9 stop condition ignores approved sink", "scopeshift/oracle.py",
-     'and d.get("destination_ip") not in self.approved_sinks', "and True"),
+     'd.get("destination_ip") not in self.scope.sinks):', "True):"),
     ("M10 evidence cap removed (answer stuffing)", "scopeshift/schema.py",
      "\n    evidence_ids: list[str] = Field(min_length=1, max_length=MAX_EVIDENCE_IDS)",
      "\n    evidence_ids: list[str] = Field(min_length=1)"),
@@ -47,6 +47,20 @@ MUTATIONS = [
      "    ref = task.hidden_reference\n    problems = []",
      ("    ref = task.hidden_reference\n    res.exception_status = ref.exception_status\n"
       "    res.transition_event_id = ref.transition_event_id\n    problems = []")),
+    ("M13 lateral movement accepted from any source host", "scopeshift/oracle.py",
+     'technique in self.lateral_methods and self.in_target_scope(d["src_host"])', "True"),
+    ("M14 initial ingress source not checked", "scopeshift/oracle.py",
+     'return d["src_ip"] == self.ingress_source and self.in_target_scope', "return self.in_target_scope"),
+    ("M15 technique not checked against approved methods", "scopeshift/oracle.py",
+     "if technique not in self.methods:\n            return False", "if False:\n            return False"),
+    ("M16 expiry boundary-marker design rule disabled", "scopeshift/oracle.py",
+     "if t.timestamp != res.effective_window_end:", "if False:"),
+    ("M17 authority pair metric counts either variant", "scopeshift/metrics.py",
+     "sum(all(r.strict_pass for r in rs) for rs in auth_reps)", "sum(any(r.strict_pass for r in rs) for rs in auth_reps)"),
+    ("M18 rejected state-change claims dropped from required evidence", "scopeshift/oracle.py",
+     "*machine.authorizing_events, *machine.rejected_claim_events, *tail", "*machine.authorizing_events, *tail"),
+    ("M19 authority-confusion label assigned when not distinguishable", "scopeshift/taxonomy.py",
+     'distinguishable = naive_key != ("ACTIVE", None)', "distinguishable = True"),
 ]
 
 
