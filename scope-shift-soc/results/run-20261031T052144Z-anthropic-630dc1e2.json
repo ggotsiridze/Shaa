@@ -1,0 +1,85 @@
+{
+  "run_id": "run-20261031T052144Z-anthropic-630dc1e2",
+  "provider": "anthropic",
+  "model": "claude-opus-5-5",
+  "returned_models": [
+    "claude-opus-5-5"
+  ],
+  "tasks_dir": "/home/user/shaa/scope-shift-soc/tasks/development",
+  "task_ids": [
+    "SS-DEV-001A"
+  ],
+  "trials": 1,
+  "max_attempts": 3,
+  "backoff_s": 2.0,
+  "jitter": 0.25,
+  "generation_settings": {
+    "structured_output": "json_schema",
+    "max_output_tokens": 16000,
+    "reasoning_effort": null,
+    "timeout_s": 120.0,
+    "sdk": "anthropic-python 2.3.0",
+    "api": "messages",
+    "base_url": "https://api.anthropic.com",
+    "thinking": "model default (not sent)",
+    "refusal_fallbacks": "disabled (a fallback would let another model answer)"
+  },
+  "started_at": "2026-10-31T05:21:44.260183+00:00",
+  "finished_at": "2026-10-31T05:21:51.109868+00:00",
+  "wall_clock_s": 6.85,
+  "usage_reported": {
+    "input_tokens": 3347,
+    "output_tokens": 462,
+    "total_tokens": null,
+    "note": "provider-reported usage; None if any trial did not report it"
+  },
+  "cost": {
+    "total_cost_usd": null,
+    "note": "not computed for real providers (no hard-coded pricing); derive from usage_reported"
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+    "pydantic": "2.14.2",
+    "openai": "3.42.0",
+    "anthropic": "2.3.0",
+    "git_commit": "6c2bea99f56d64feb520f60db7155212fe9dc680",
+    "prompt_template_sha256": "3078e84f776573b29ba388c313ed3b3508f7c554dba3438eade883f1e089e6df",
+    "task_files_sha256": {
+      "SS-DEV-001A": "70a401a92f350f7827a47dd43f558b619f1f15379004f45533f7ec5a6f9b6781"
+    }
+  },
+  "transcripts": "/home/user/shaa/scope-shift-soc/transcripts/run-20261031T052144Z-anthropic-630dc1e2.jsonl",
+  "metrics": {
+    "n_trials_total": 1,
+    "n_trials_scored": 1,
+    "trials_per_task": 1,
+    "task_pass_rate": 1.0,
+    "pair_pass_rate": 1.0,
+    "mean_score": 1.0,
+    "exception_state_accuracy": 1.0,
+    "transition_event_accuracy": 1.0,
+    "governing_rule_accuracy": 1.0,
+    "primary_action_accuracy": 1.0,
+    "evidence_coverage": 1.0,
+    "source_authority_pair_pass_rate": 1.0,
+    "authority_contrast_consistency": 1.0,
+    "premature_termination_rate": 0.0,
+    "missed_termination_rate": null,
+    "stale_authorization_rate": null,
+    "parse_failure_rate": 0.0,
+    "infrastructure_failure_rate": 0.0,
+    "strict_pass_pow_1": 1.0,
+    "pair_pass_pow_1": 1.0,
+    "strict_pass_at_1_any": 1.0,
+    "tasks_incomplete_due_to_infra": [],
+    "per_task_pass_pow_k": {
+      "SS-DEV-001A": true
+    },
+    "per_pair_pass_pow_k": {
+      "DEV-PAIR-001": true
+    },
+    "failure_type_counts": {},
+    "total_cost_usd": null
+  }
+}
