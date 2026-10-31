@@ -44,6 +44,7 @@
           "status": "APPROVED",
           "host": "app-db-02.corp.example",
           "account": "svc-patch",
+          "approved_processes": "powershell.exe,dbengine_update.exe",
           "valid_from": "2026-10-30T03:00:00Z",
           "valid_until": "2026-10-30T04:00:00Z"
         }

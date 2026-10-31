@@ -1,7 +1,7 @@
 # BUG_LOG
 
-BUG-001 to BUG-010: found during the original pilot bug hunt. REVIEW-011 to REVIEW-020: found by an external adversarial review.
-REVIEW-021 to REVIEW-023: found while applying those repairs. Every entry has a regression test, and all are fixed.
+BUG-001 to BUG-010: found during the original pilot bug hunt. REVIEW-011 to REVIEW-020: found by an external adversarial review. REVIEW-024: found by a second external review.
+REVIEW-021 to REVIEW-023, REVIEW-025 and REVIEW-026: found while applying repairs or during the author's own re-review. Every entry has a regression test, and all are fixed.
 
 ## BUG-001: missed-transition mock failed for the wrong reason
 - **File:** `scopeshift/providers/mock.py`
@@ -193,3 +193,37 @@ REVIEW-021 to REVIEW-023: found while applying those repairs. Every entry has a 
 - **Impact:** No effect on the 4 pilot tasks, where the two always agree. But it is exactly the spec/text gap REVIEW-015 warns about: a future task with a matching source and a different record type would have a gold answer the visible text does not support.
 - **Fix:** The policy text now names both fields, e.g. "(source: change_management, source_class: CHANGE_RECORD)". Identical in both pair variants.
 - **Regression test:** `tests/test_review_repairs.py::test_policy_text_names_every_authority_grant`
+
+---
+
+# Second external review (v0.3 repair)
+
+## REVIEW-024 (BLOCKER, second external review): Pair 2 transfer coverage did not prove the approved method
+- **File:** `SS-DEV-002A/B.json` (E4, E6 details), `scopeshift/oracle.py` (`_Scope.covers`)
+- **Verified before fixing:** confirmed. E4/E6 details contained only `src_host`, `destination_ip`, `destination_host` and `data_classification`. `covers()` returned `EXFIL_TECHNIQUE in self.methods and ...`, which checks that exfiltration simulation is in E1's approved list, not that this transfer used it.
+- **Root cause:** PT-02 condition (2), "it uses an approved method", was inferred from the authorization rather than read from the event.
+- **Impact:** For 002A it was defensible to argue that E6 was not shown to be covered under PT-02, so PT-05 / ESCALATE_TIER2 applied. Gold uniqueness was broken. (See REVIEW-025: the oracle's own answer would not even have changed, which is a second gap.)
+- **Fix:**
+  - E4 and E6 now carry `"technique": "exfiltration_simulation"`, identical in A and B, consistent with the `technique` field on E2, E3 and E7.
+  - `covers()` now applies the method check (the event's own `technique` must be in the approved list) to transfers too, before the transfer-specific checks. A missing technique means not covered.
+  - Transfer-specific checks: the source host must be an approved target. The destination must be the sink when the data is PROTECTED (PT-02 (4)) or the technique is `exfiltration_simulation` (E1: "to the approved sink only").
+  - This also corrects a smaller mismatch: v0.2 required *every* transfer to go to the sink, but the English text restricts only protected data and the exfiltration-simulation method.
+  - The PT-03 stop condition is unchanged and independent of technique, as in the policy text.
+- **Regression tests:** `tests/test_review_repairs.py::test_transfer_with_exfil_technique_scope_and_sink_is_covered`, `::test_transfer_without_technique_is_not_covered`, `::test_transfer_with_unapproved_method_is_not_covered`, `::test_transfer_from_out_of_scope_host_is_not_covered`, `::test_approved_technique_unapproved_sink_is_stop_condition`, `::test_stop_condition_does_not_depend_on_technique`, `::test_stop_condition_needs_permitted_telemetry_even_with_technique`, `::test_approved_technique_and_sink_does_not_trigger_stop`, `::test_exfil_simulation_of_unprotected_data_off_sink_not_covered_but_no_stop`, `::test_pilot_transfers_carry_explicit_approved_technique`, `::test_e6_technique_identical_across_pair`, `::test_pair2_gold_after_technique_repair`, `::test_pair_diff_still_only_declared_fields`
+- **Mutations:** M20 (skip the transfer technique check), M21 (drop the sink restriction). Both killed.
+
+## REVIEW-025 (found while verifying REVIEW-024): Uncovered earlier activity was invisible to the gold rule
+- **File:** `scopeshift/oracle.py` (`check_against_reference`)
+- **Symptom:** With E6's technique removed from 002A, the oracle still derived PT-02 / MONITOR, because the governing rule is chosen from the *alerted* event (E7) only. PT-05, however, requires escalation of *any* uncovered engagement activity (CHG-04 likewise).
+- **Impact:** A task with uncovered pre-transition activity has two simultaneous obligations, so the gold action is not unique. The validator did not detect this. The four pilot tasks were not affected after REVIEW-024, but the gap would have let such a task through silently.
+- **Fix:** Task validation now fails when any ACTIVITY/DATA_TRANSFER event before the transition (or anywhere, if there is no transition) is uncovered. Uncovered events after a transition are expected (the terminating rule governs them).
+- **Regression tests:** `::test_validation_rejects_uncovered_activity_before_transition`, `::test_uncovered_activity_after_transition_is_expected`, `::test_pilot_tasks_have_no_competing_obligations`
+- **Mutation:** M22. Killed.
+
+## REVIEW-026 (found in the author's re-review): CHG-02 "matches the approved activity description" was not checked
+- **File:** `SS-DEV-001A/B.json` (E1 details), `scopeshift/oracle.py`
+- **Symptom:** CHG-02 covers activity by the approved account, on the approved host, *that matches the approved activity description*. The oracle checked only host and account. It is the same class of gap as REVIEW-024, in Pair 1.
+- **Impact:** None on the current gold answers (E2, E3 and E7 are PowerShell patch scripts and the named installer). But a visible requirement was silently ignored by the encoding.
+- **Fix:** E1 now carries `approved_processes: "powershell.exe,dbengine_update.exe"`, matching its text and identical in both variants. Maintenance coverage requires the event's own `process` to be in that list.
+- **Regression tests:** `::test_maintenance_unapproved_process_not_covered`, `::test_maintenance_missing_process_not_covered`, `::test_pair1_activities_match_approved_processes`
+- **Mutation:** M23. Killed.

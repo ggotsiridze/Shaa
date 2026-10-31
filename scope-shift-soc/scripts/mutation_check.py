@@ -61,6 +61,17 @@ MUTATIONS = [
      "*machine.authorizing_events, *machine.rejected_claim_events, *tail", "*machine.authorizing_events, *tail"),
     ("M19 authority-confusion label assigned when not distinguishable", "scopeshift/taxonomy.py",
      'distinguishable = naive_key != ("ACTIVE", None)', "distinguishable = True"),
+    ("M20 transfer coverage skips the event's own technique", "scopeshift/oracle.py",
+     "        if technique not in self.methods:\n            return False\n        if kind == EventKind.DATA_TRANSFER:",
+     ("        if technique not in self.methods and kind != EventKind.DATA_TRANSFER:\n            return False\n"
+      "        if kind == EventKind.DATA_TRANSFER:")),
+    ("M21 protected-data sink restriction dropped for transfers", "scopeshift/oracle.py",
+     "return self.in_target_scope(d.get(\"src_host\")) and (not sink_required or d.get(\"destination_ip\") in self.sinks)",
+     "return self.in_target_scope(d.get(\"src_host\"))"),
+    ("M22 competing-obligation design rule disabled", "scopeshift/oracle.py",
+     "    if uncovered:\n", "    if False:\n"),
+    ("M23 maintenance coverage ignores the approved activity (process)", "scopeshift/oracle.py",
+     ' and d.get("process") in self.processes', ""),
 ]
 
 

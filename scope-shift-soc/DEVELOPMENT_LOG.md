@@ -55,6 +55,14 @@ more than one defensible answer. Repairs (details and tests in BUG_LOG.md, REVIE
 8. **Environment.** Python 3.12.3, exact pins, `pip check` clean (REVIEW-020).
 9. **Mutations:** 7 new ones (M13–M19) covering the new logic. 19/19 killed.
 
+## 2026-10-31: v0.3 repair after second external review
+
+1. **REVIEW-024 (blocker) verified, then fixed.** Pair 2 transfers did not show their own method. E4/E6 now carry `technique: exfiltration_simulation` (identical across the pair), and transfer coverage reads it. Transfer sink rules were also aligned with the English text: the sink is required for protected data or exfiltration simulation.
+2. While verifying it, found **REVIEW-025**: the gold rule only looks at the alerted event, so uncovered earlier activity (a competing PT-05/CHG-04 obligation) went unnoticed. Validation now rejects such tasks.
+3. Adversarial re-review of all four tasks found **REVIEW-026**: CHG-02's "approved activity description" was not encoded. E1 gains `approved_processes`, and maintenance coverage checks `process`.
+4. Docs now state explicitly that evidence is required-evidence coverage (recall), not exact-set agreement.
+5. Mutations M20–M23 added; 23/23 killed.
+
 ## Design decisions made during the pilot (need author review)
 
 - **Transition event for time-based expiry** (revised in v0.2): an identical neutral time marker

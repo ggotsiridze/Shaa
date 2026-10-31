@@ -2,7 +2,7 @@
 
 **Temporal Exception-State Tracking for AI SOC Analysts**: development pilot.
 
-> Status: **pilot software only, v0.2 (repaired after external review)**. 4 synthetic development tasks (2 controlled pairs). No real-model
+> Status: **pilot software only, v0.3 (repaired after two external reviews)**. 4 synthetic development tasks (2 controlled pairs). No real-model
 > results exist. No human or expert validation has happened (`human_review_status: PENDING`).
 > AI coding tools assisted with implementation and drafting. Final author review pending.
 
@@ -55,7 +55,7 @@ pytest -q
 python scripts/validate_tasks.py
 python scripts/validate_pairs.py        # also regenerates PAIR_DIFF_REPORT.md
 python scripts/validate_alignment.py
-python scripts/mutation_check.py        # injects 19 bugs; all must be caught
+python scripts/mutation_check.py        # injects 23 bugs; all must be caught
 python run_eval.py --provider mock --model mock-perfect --tasks tasks/development --trials 3
 ```
 
@@ -79,7 +79,12 @@ Per-trial records go to `transcripts/<run_id>.jsonl`. Run summaries and metrics 
 - **Authority:** a state change counts only if the event's `source` **and** `source_class` match
   a grant in the policy.
 - **Strict pass:** status, transition, rule and action are all correct, every required evidence
-  ID is cited, and no unknown IDs appear.
+  ID is cited, and no unknown IDs appear. Evidence is scored as required-evidence coverage
+  (recall), not exact-set agreement: extra valid IDs within the cap of 4 are not penalized.
+- **Coverage is read from each event's own visible details**, never inferred from the
+  authorization alone. Maintenance: host, account and `process`. Pentest: `technique`, plus
+  source/target/sink as applicable. Validation rejects any task in which activity before the
+  transition is uncovered, because that would create a competing escalation obligation.
 - **Headline consistency metric is pass^k:** a task passes only if *all* k trials pass
   (`strict_pass_pow_k`, `pair_pass_pow_k`). `strict_pass_at_k_any` (true pass@k: at least one
   trial passes) is reported for reference only.

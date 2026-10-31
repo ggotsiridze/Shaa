@@ -1,6 +1,6 @@
 # RESEARCH_DECISION — ScopeShift-SOC (development pilot)
 
-Status: **pilot design, revised after external review (v0.2), pre-model-testing**. No model results exist yet. No human or expert
+Status: **pilot design, revised after two external reviews (v0.3), pre-model-testing**. No model results exist yet. No human or expert
 validation has happened yet. Every task is synthetic.
 
 ## 1. Hypothesis
@@ -134,7 +134,9 @@ and destinations. It never reads `hidden_reference`.
 - **PT-05** escalates uncovered activity "except where PT-03 applies". That removes the overlap
   with the stop-condition rule.
 - E2: password spraying from the ingress IP against `stg-dc-01`. E3: PsExec from `stg-web-01`
-  to `stg-app-02`, both in scope. E4: protected test data sent to the approved sink.
+  to `stg-app-02`, both in scope. E4: protected test data sent to the approved sink. Each
+  activity event carries its own `technique`. E4 and E6 carry
+  `technique: exfiltration_simulation`, identical in both variants (REVIEW-024).
 - E5: tester chat message saying "all transfers go to our sink" (`CHAT_MESSAGE`).
 - E6 (11:30Z): DLP records a protected-data transfer.
   - **Variant A**: to 203.0.113.50, the approved sink.
@@ -174,11 +176,16 @@ Then the event itself is applied:
   reported by permitted telemetry (`dlp`/`netflow`). Terminates at that event.
 - **Coverage** (per `ACTIVITY` / `DATA_TRANSFER` event) is evaluated from visible details
   against the authorizing record:
-  - maintenance: approved host and account;
-  - pentest: ingress source, target suffix, approved method, lateral-method restriction, sink.
+  - maintenance: approved host, account and process (CHG-02 "matches the approved activity
+    description", REVIEW-026);
+  - pentest: the event's own `technique` must be an approved method (transfers included,
+    REVIEW-024), plus ingress source, target suffix, the lateral-method restriction, and the sink
+    for protected data or exfiltration simulation.
 
   Out-of-scope activity is reported as not covered (PT-05 / CHG-04) but does not terminate the
-  exception.
+  exception. Task validation rejects any task where activity *before* the transition is
+  uncovered. Such activity would carry its own escalation obligation, competing with the rule
+  for the alerted event (REVIEW-025).
 - Only the **first** transition is recorded.
 
 ## 10. Source-authority mechanism and how it is measured
@@ -220,7 +227,7 @@ Then the event itself is applied:
   after the stop condition, rather than `ISOLATE_HOST`? Both are stated by the policy text.
 - Is the lateral-movement scope (target → target via PsExec; LSASS on any approved target)
   realistic rules-of-engagement wording?
-- Would a competent analyst cite exactly the required evidence sets under the prompt's
+- Would a competent analyst cite *at least* the required evidence IDs under the prompt's
   (a)/(b)/(c) rule?
 
 ## 13. Possible grader gaming and defenses

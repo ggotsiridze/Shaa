@@ -76,9 +76,10 @@ def ev(eid, ts, kind=None, src="edr", cls=EP, details=None):
 
 
 # maintenance helpers
-def create(eid, ts, start, end, src="change_management", cls=CR, host=HOST, account=ACCT):
-    return ev(eid, ts, "AUTHORIZATION_CREATE", src, cls,
-              {"valid_from": start, "valid_until": end, "host": host, "account": account})
+def create(eid, ts, start, end, src="change_management", cls=CR, host=HOST, account=ACCT,
+           processes="powershell.exe,dbengine_update.exe"):
+    return ev(eid, ts, "AUTHORIZATION_CREATE", src, cls, {"valid_from": start, "valid_until": end, "host": host,
+                                                          "account": account, "approved_processes": processes})
 
 
 def extend(eid, ts, new_end, src="change_management", cls=CR):
@@ -89,8 +90,8 @@ def revoke(eid, ts, src="change_management", cls=CR):
     return ev(eid, ts, "AUTHORIZATION_REVOKE", src, cls)
 
 
-def activity(eid, ts, host=HOST, account=ACCT):
-    return ev(eid, ts, "ACTIVITY", details={"host": host, "account": account})
+def activity(eid, ts, host=HOST, account=ACCT, process="powershell.exe"):
+    return ev(eid, ts, "ACTIVITY", details={"host": host, "account": account, "process": process})
 
 
 def marker(eid, ts):
@@ -122,9 +123,12 @@ def pt_on_host(eid, ts, host="stg-app-02" + SUFFIX, technique="lsass_credential_
     return ev(eid, ts, "ACTIVITY", "edr", EP, {"host": host, "technique": technique})
 
 
-def transfer(eid, ts, dest, classification="PROTECTED", src="dlp", cls=DLP, src_host="stg-app-02" + SUFFIX):
-    return ev(eid, ts, "DATA_TRANSFER", src, cls,
-              {"src_host": src_host, "destination_ip": dest, "data_classification": classification})
+def transfer(eid, ts, dest, classification="PROTECTED", src="dlp", cls=DLP, src_host="stg-app-02" + SUFFIX,
+             technique="exfiltration_simulation"):
+    d = {"src_host": src_host, "destination_ip": dest, "data_classification": classification}
+    if technique is not None:
+        d["technique"] = technique
+    return ev(eid, ts, "DATA_TRANSFER", src, cls, d)
 
 
 def _finish(base: dict, events, reference) -> Task:

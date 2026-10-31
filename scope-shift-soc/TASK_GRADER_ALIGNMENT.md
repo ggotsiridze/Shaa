@@ -28,7 +28,9 @@ numbers.
 
 ## Known tension (for human review)
 
-The required evidence sets are exactly what the oracle derives from rule (a)/(b)/(c) on L20
+Evidence is scored as **required-evidence coverage (recall)**, not exact-set agreement: every
+required ID must be cited for strict pass, and extra valid IDs (within the cap of 4) are not
+penalized. The required IDs are exactly what the oracle derives from rule (a)/(b)/(c) on L20
 (REVIEW-018): 001A {E1,E4,E7}, 001B {E1,E4,E6}, 002A {E1,E6,E7}, 002B {E1,E6}. Each pair's
 decisive event (E4 / E6) is required in both variants. A reviewer should confirm that a
 competent analyst would read L20 the same way.

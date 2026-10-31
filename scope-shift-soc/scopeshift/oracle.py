@@ -115,6 +115,7 @@ class _Scope:
 
     host: str | None = None
     account: str | None = None
+    processes: set[str] = field(default_factory=set)
     ingress_source: str | None = None
     target_suffix: str | None = None
     methods: set[str] = field(default_factory=set)
@@ -124,7 +125,8 @@ class _Scope:
     @classmethod
     def from_record(cls, model: ScopeModel, d: dict[str, str], where: str) -> _Scope:
         if model == ScopeModel.MAINTENANCE:
-            return cls(host=_detail(d, "host", where), account=_detail(d, "account", where))
+            return cls(host=_detail(d, "host", where), account=_detail(d, "account", where),
+                       processes=_csv(_detail(d, "approved_processes", where)))
         return cls(
             ingress_source=_detail(d, "approved_ingress_source", where),
             target_suffix=_detail(d, "approved_target_suffix", where),
@@ -138,13 +140,20 @@ class _Scope:
 
     def covers(self, model: ScopeModel, kind: EventKind, d: dict[str, str]) -> bool:
         if model == ScopeModel.MAINTENANCE:
-            return d.get("host") == self.host and d.get("account") == self.account
-        if kind == EventKind.DATA_TRANSFER:
-            return (EXFIL_TECHNIQUE in self.methods and self.in_target_scope(d.get("src_host"))
-                    and d.get("destination_ip") in self.sinks)
+            # CHG-02: approved account, on the approved host, matching the approved activity
+            # description -- the last read from the event's own `process` (REVIEW-026).
+            return d.get("host") == self.host and d.get("account") == self.account and d.get("process") in self.processes
+        # PT-02 (2): every covered activity, transfers included, must itself show an approved method.
+        # The method is read from the event's own visible `technique`; it is never inferred from
+        # the authorization's method list (REVIEW-024). Missing technique -> not covered.
         technique = d.get("technique")
         if technique not in self.methods:
             return False
+        if kind == EventKind.DATA_TRANSFER:
+            # PT-02 (1)/(3): sent from an approved target. PT-02 (4): protected data only to the sink.
+            # E1 also approves exfiltration simulation "to the approved sink only", whatever the data.
+            sink_required = d.get("data_classification") == PROTECTED_CLASSIFICATION or technique == EXFIL_TECHNIQUE
+            return self.in_target_scope(d.get("src_host")) and (not sink_required or d.get("destination_ip") in self.sinks)
         if "src_ip" in d:  # initial ingress from outside the target environment
             return d["src_ip"] == self.ingress_source and self.in_target_scope(d.get("dst_host"))
         if "src_host" in d:  # movement between hosts: only approved lateral methods, target -> target
@@ -332,6 +341,15 @@ def check_against_reference(task: Task) -> list[str]:
         if t.timestamp != res.effective_window_end:
             problems.append(f"{task.task_id}: expiry transition {t.event_id} is at {t.timestamp.isoformat()}, "
                             f"not at the window end {res.effective_window_end}; add a boundary TIME_MARKER event")
+    # Every activity before the transition (or anywhere, if none) must be covered. An uncovered
+    # one would trigger CHG-04 / PT-05 escalation on its own, competing with the rule for the
+    # alerted event and making the gold action non-unique (REVIEW-025).
+    order = [e.event_id for e in task.model_visible.timeline]
+    cutoff = order.index(res.transition_event_id) if res.transition_event_id else len(order)
+    uncovered = [eid for eid, ok in res.event_coverage.items() if not ok and order.index(eid) < cutoff]
+    if uncovered:
+        problems.append(f"{task.task_id}: activity {uncovered} is not covered before the transition; "
+                        "it creates a competing escalation obligation (ambiguous gold action)")
     if len(res.required_evidence_ids) > MAX_EVIDENCE_IDS:
         problems.append(f"{task.task_id}: derived evidence set exceeds the {MAX_EVIDENCE_IDS}-ID cap: {res.required_evidence_ids}")
     return problems

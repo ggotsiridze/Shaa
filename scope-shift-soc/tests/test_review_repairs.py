@@ -239,3 +239,145 @@ def test_policy_text_names_every_authority_grant(tasks):
         for g in t.oracle_spec.authority:
             assert f"source: {g.source}" in policy, (t.task_id, g.source)
             assert g.source_class.value in policy, (t.task_id, g.source_class.value)
+
+
+# ---- REVIEW-024: DATA_TRANSFER must show its own approved method ------------------------
+
+def _pt_transfer(**kw):
+    from conftest import build_pt_task, roe, transfer
+    return run_oracle(build_pt_task([roe("E1", "2026-10-30T08:55:00Z"), transfer("E2", "2026-10-30T10:00:00Z", **kw)]))
+
+
+def test_transfer_with_exfil_technique_scope_and_sink_is_covered():
+    r = _pt_transfer(dest="203.0.113.50")
+    assert r.event_coverage["E2"] is True and r.exception_status.value == "ACTIVE"
+
+
+def test_transfer_without_technique_is_not_covered():
+    r = _pt_transfer(dest="203.0.113.50", technique=None)
+    assert r.event_coverage["E2"] is False
+    assert r.exception_status.value == "ACTIVE"  # not a stop condition: destination is the sink
+
+
+def test_transfer_with_unapproved_method_is_not_covered():
+    r = _pt_transfer(dest="203.0.113.50", technique="dns_tunnelling")
+    assert r.event_coverage["E2"] is False
+
+
+def test_transfer_from_out_of_scope_host_is_not_covered():
+    r = _pt_transfer(dest="203.0.113.50", src_host="fin-db-01.corp.example")
+    assert r.event_coverage["E2"] is False
+
+
+def test_approved_technique_unapproved_sink_is_stop_condition():
+    r = _pt_transfer(dest="192.0.2.77")
+    assert r.event_coverage["E2"] is False
+    assert (r.exception_status.value, r.transition_event_id, r.termination_cause.value) == ("TERMINATED", "E2", "STOP_CONDITION")
+
+
+def test_stop_condition_does_not_depend_on_technique():
+    # PT-03 has no method condition: protected data to a non-sink terminates either way.
+    r = _pt_transfer(dest="192.0.2.77", technique=None)
+    assert r.termination_cause.value == "STOP_CONDITION"
+
+
+def test_stop_condition_needs_permitted_telemetry_even_with_technique():
+    r = _pt_transfer(dest="192.0.2.77", src="chat", cls="CHAT_MESSAGE")
+    assert r.exception_status.value == "ACTIVE" and r.termination_cause is None
+
+
+def test_approved_technique_and_sink_does_not_trigger_stop():
+    r = _pt_transfer(dest="203.0.113.50")
+    assert r.termination_cause is None and r.last_stop_check_event_id == "E2"
+
+
+def test_exfil_simulation_of_unprotected_data_off_sink_not_covered_but_no_stop():
+    # E1 approves exfiltration simulation "to the approved sink only"; PT-03 needs protected data.
+    r = _pt_transfer(dest="192.0.2.77", classification="PUBLIC")
+    assert r.event_coverage["E2"] is False and r.termination_cause is None
+
+
+def test_pilot_transfers_carry_explicit_approved_technique(by_id):
+    for tid in ("SS-DEV-002A", "SS-DEV-002B"):
+        tl = {e.event_id: e for e in by_id[tid].model_visible.timeline}
+        for eid in ("E4", "E6"):
+            assert tl[eid].details["technique"] == "exfiltration_simulation", (tid, eid)
+
+
+def test_e6_technique_identical_across_pair(by_id):
+    a = by_id["SS-DEV-002A"].model_visible.timeline[5].details
+    b = by_id["SS-DEV-002B"].model_visible.timeline[5].details
+    assert a["technique"] == b["technique"]
+    assert {k for k in a if a[k] != b[k]} == {"destination_ip", "destination_host"}
+
+
+def test_pair2_gold_after_technique_repair(by_id):
+    a, b = run_oracle(by_id["SS-DEV-002A"]), run_oracle(by_id["SS-DEV-002B"])
+    assert (a.exception_status.value, a.transition_event_id, a.governing_rule_id, a.primary_action.value) == \
+        ("ACTIVE", None, "PT-02", "MONITOR")
+    assert (b.exception_status.value, b.transition_event_id, b.governing_rule_id, b.primary_action.value) == \
+        ("TERMINATED", "E6", "PT-03", "OPEN_INCIDENT")
+    assert all(a.event_coverage.values())  # every Pair 2A activity is covered
+
+
+def test_pair_diff_still_only_declared_fields(tasks):
+    from conftest import TASK_DIR
+
+    from scopeshift.loader import load_pairs
+    from scopeshift.pair_validation import validate_all_pairs
+    reports = {r.pair_id: r for r in validate_all_pairs(load_pairs(TASK_DIR), tasks)}
+    assert all(r.ok for r in reports.values())
+    assert set(reports["DEV-PAIR-002"].visible_diff) == {
+        "timeline[E6].event", "timeline[E6].details.destination_ip", "timeline[E6].details.destination_host"}
+
+
+# ---- REVIEW-025: uncovered activity before the transition makes the gold action non-unique
+
+def test_validation_rejects_uncovered_activity_before_transition():
+    raw = raw_task("SS-DEV-002A")
+    del raw["model_visible"]["timeline"][5]["details"]["technique"]  # E6 no longer shows its method
+    t = Task.model_validate(raw)
+    r = run_oracle(t)
+    assert r.event_coverage["E6"] is False
+    assert r.governing_rule_id == "PT-02"  # the alert-based rule alone would not notice...
+    assert any("competing escalation obligation" in p for p in check_against_reference(t))  # ...validation does
+
+
+def test_uncovered_activity_after_transition_is_expected(by_id):
+    # In 002B, E6/E7 are uncovered because the authorization ended at E6: PT-03 governs them,
+    # so they are not a competing obligation and validation accepts the task.
+    t = by_id["SS-DEV-002B"]
+    r = run_oracle(t)
+    assert r.event_coverage["E6"] is False and r.event_coverage["E7"] is False
+    assert check_against_reference(t) == []
+
+
+def test_pilot_tasks_have_no_competing_obligations(tasks):
+    for t in tasks:
+        assert not [p for p in check_against_reference(t) if "competing" in p]
+
+
+# ---- REVIEW-026: CHG-02 "matches the approved activity description" is checked ----------
+
+def test_maintenance_unapproved_process_not_covered():
+    t = build_task([create("E1", "2026-10-30T03:00:00Z", "2026-10-30T03:00:00Z", "2026-10-30T04:00:00Z"),
+                    activity("E2", "2026-10-30T03:30:00Z", process="procdump.exe")])
+    r = run_oracle(t)
+    assert r.event_coverage["E2"] is False
+    assert r.governing_rule_id == "CHG-04" and r.primary_action.value == "ESCALATE_TIER2"
+
+
+def test_maintenance_missing_process_not_covered():
+    raw = raw_task("SS-DEV-001A")
+    del raw["model_visible"]["timeline"][6]["details"]["process"]
+    assert run_oracle(Task.model_validate(raw)).event_coverage["E7"] is False
+
+
+def test_pair1_activities_match_approved_processes(by_id):
+    for tid in ("SS-DEV-001A", "SS-DEV-001B"):
+        tl = {e.event_id: e for e in by_id[tid].model_visible.timeline}
+        approved = set(tl["E1"].details["approved_processes"].split(","))
+        assert {tl[e].details["process"] for e in ("E2", "E3", "E7")} <= approved
+        assert "powershell.exe" in tl["E1"].event.lower() or "PowerShell" in tl["E1"].event
+        assert "dbengine_update.exe" in tl["E1"].event
+    assert all(run_oracle(by_id["SS-DEV-001A"]).event_coverage.values())
